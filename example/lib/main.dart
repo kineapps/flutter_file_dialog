@@ -40,7 +40,8 @@ class _MyAppState extends State<MyApp> {
         appBar: AppBar(
           title: const Text('FlutterFileDialog test app'),
         ),
-        body: Center(
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
