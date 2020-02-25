@@ -22,6 +22,9 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
     private var activityBinding: ActivityPluginBinding? = null
     private var methodChannel: MethodChannel? = null
 
+    // V1 only
+    private var registrar: Registrar? = null
+
     companion object {
         const val LOG_TAG = "FlutterFileDialogPlugin"
         @JvmStatic
@@ -55,6 +58,7 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
         doOnDetachedFromEngine()
     }
 
+    // note: this may be called multiple times on app startup
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         Log.d(LOG_TAG, "onAttachedToActivity")
         doOnAttachedToActivity(binding)
@@ -102,22 +106,8 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
                                        registrar: Registrar? = null) {
         Log.d(LOG_TAG, "doOnAttachedToActivity - IN")
 
-        var fileDialog: FileDialog? = null
-        if (registrar != null) {
-            // V1 embedding
-            fileDialog = FileDialog(
-                    activity = registrar.activity()
-            )
-            registrar.addActivityResultListener(fileDialog)
-        } else if (activityBinding != null) {
-            // V2 embedding
-            this.activityBinding = activityBinding
-            fileDialog = FileDialog(
-                    activity = activityBinding.activity
-            )
-            activityBinding.addActivityResultListener(fileDialog)
-        }
-        this.fileDialog = fileDialog
+        this.activityBinding = activityBinding
+        this.registrar = registrar
 
         Log.d(LOG_TAG, "doOnAttachedToActivity - OUT")
     }
@@ -136,22 +126,53 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
 
 
     override fun onMethodCall(call: MethodCall, result: Result) {
-        Log.d(LOG_TAG, "onMethodCall, method=${call.method}")
+        Log.d(LOG_TAG, "onMethodCall - IN , method=${call.method}")
+        if (fileDialog == null) {
+            if (!createFileDialog()) {
+                result?.error("init_failed", "Not attached", null)
+                return
+            }
+        }
         when (call.method) {
-            "pickFile" -> fileDialog?.pickFile(
+            "pickFile" -> fileDialog!!.pickFile(
                     result,
                     fileExtensionsFilter = parseMethodCallArrayArgument(call, "fileExtensionsFilter"),
                     mimeTypesFilter = parseMethodCallArrayArgument(call, "mimeTypesFilter"),
                     localOnly = call.argument("localOnly") as Boolean? == true
             )
-            "saveFile" -> fileDialog?.saveFile(
+            "saveFile" -> fileDialog!!.saveFile(
                     result,
-                    sourceFilePath = call.argument("sourceFilePath"),
+                    sourceFilePath = call.argument("sourceFilePath")!!,
                     mimeTypesFilter = parseMethodCallArrayArgument(call, "mimeTypesFilter"),
                     localOnly = call.argument("localOnly") as Boolean? == true
             )
             else -> result.notImplemented()
         }
+    }
+
+    private fun createFileDialog(): Boolean {
+        Log.d(LOG_TAG, "createFileDialog - IN")
+
+        var fileDialog: FileDialog? = null
+        if (registrar != null) {
+            // V1 embedding
+            fileDialog = FileDialog(
+                    activity = registrar!!.activity()
+            )
+            registrar!!.addActivityResultListener(fileDialog)
+        } else if (activityBinding != null) {
+            // V2 embedding
+            this.activityBinding = activityBinding
+            fileDialog = FileDialog(
+                    activity = activityBinding!!.activity
+            )
+            activityBinding!!.addActivityResultListener(fileDialog)
+        }
+        this.fileDialog = fileDialog
+
+        Log.d(LOG_TAG, "createFileDialog - OUT")
+
+        return fileDialog != null
     }
 
     private fun parseMethodCallArrayArgument(call: MethodCall, arg: String): Array<String>? {

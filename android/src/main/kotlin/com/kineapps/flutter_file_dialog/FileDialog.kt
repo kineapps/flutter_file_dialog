@@ -60,7 +60,7 @@ class FileDialog(
     }
 
     fun saveFile(result: MethodChannel.Result,
-                 sourceFilePath: String?,
+                 sourceFilePath: String,
                  mimeTypesFilter: Array<String>?,
                  localOnly: Boolean
     ) {
@@ -218,20 +218,17 @@ class FileDialog(
     }
 
     private fun validateFileExtension(filePath: String): Boolean {
-        val validFileExtensions = fileExtensionsFilter;
-        if (validFileExtensions == null || validFileExtensions.size == 0) {
-            return true;
+        val validFileExtensions = fileExtensionsFilter
+        if (validFileExtensions == null || validFileExtensions.isEmpty()) {
+            return true
         }
-        val fileExtension = getFileExtension(filePath)
-        if (fileExtension == null) {
-            return false;
-        }
+        val fileExtension = getFileExtension(filePath) ?: return false
         for (extension in validFileExtensions) {
             if (fileExtension.equals(extension, true)) {
-                return true;
+                return true
             }
         }
-        return false;
+        return false
     }
 
     private fun saveFileOnBackground(
@@ -268,7 +265,7 @@ class FileDialog(
     ): String {
         val sourceFile = File(sourceFilePath)
 
-        Log.d(LOG_TAG, "Saving file '${sourceFile.path}' to '${destinationFileUri?.path}'")
+        Log.d(LOG_TAG, "Saving file '${sourceFile.path}' to '${destinationFileUri.path}'")
         sourceFile.inputStream().use { inputStream ->
             activity.contentResolver.openOutputStream(destinationFileUri).use { outputStream ->
                 inputStream.copyTo(outputStream!!)
