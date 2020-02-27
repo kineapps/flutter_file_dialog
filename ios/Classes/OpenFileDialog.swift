@@ -64,28 +64,33 @@ class OpenFileDialog: NSObject, UIDocumentPickerDelegate, UIImagePickerControlle
             if let pickedImage: UIImage = info[UIImagePickerController.InfoKey.editedImage] as? UIImage ??
                 info[UIImagePickerController.InfoKey.originalImage] as? UIImage {
                 // save picked image to temp dir
-                do {
-                    let directory = NSTemporaryDirectory()
+                DispatchQueue.global(qos: .userInitiated).async {
+                    do {
+                        let directory = NSTemporaryDirectory()
 
-                    let dateFormatter = DateFormatter()
-                    dateFormatter.dateFormat = "yyyyMMddHHmmss"
+                        let dateFormatter = DateFormatter()
+                        dateFormatter.dateFormat = "yyyyMMddHHmmss"
 
-                    let fileName = dateFormatter.string(from: Date()) + ".jpg"
+                        let fileName = dateFormatter.string(from: Date()) + ".jpg"
 
-                    let destinationFileUrl = NSURL.fileURL(withPathComponents: [directory, fileName])!
+                        let destinationFileUrl = NSURL.fileURL(withPathComponents: [directory, fileName])!
 
-                    let jpeg = pickedImage.jpegData(compressionQuality: CGFloat(1.0))!
-                    try jpeg.write(to: destinationFileUrl)
+                        let jpeg = pickedImage.jpegData(compressionQuality: CGFloat(1.0))!
+                        try jpeg.write(to: destinationFileUrl)
 
-                    writeLog("Saved picked image to: " + destinationFileUrl.path)
-
-                    // return picked file path
-                    flutterResult?(destinationFileUrl.path)
-                } catch {
-                    writeLog(error.localizedDescription)
-                    flutterResult?(FlutterError(code: "file_copy_error",
-                                                message: error.localizedDescription,
-                                                details: nil))
+                        // return picked file path
+                        DispatchQueue.main.async {
+                            writeLog("Saved picked image to: " + destinationFileUrl.path)
+                            self.flutterResult?(destinationFileUrl.path)
+                        }
+                    } catch {
+                        DispatchQueue.main.async {
+                            writeLog(error.localizedDescription)
+                            self.flutterResult?(FlutterError(code: "file_copy_error",
+                                                             message: error.localizedDescription,
+                                                             details: nil))
+                        }
+                    }
                 }
             } else {
                 flutterResult?(nil)
@@ -144,24 +149,35 @@ class OpenFileDialog: NSObject, UIDocumentPickerDelegate, UIImagePickerControlle
         // move file to destination
         // file is already saved to destination path if picked from photos
         if destinationFileUrl.absoluteString != url.absoluteString {
-            do {
-                // overwrite existing file
-                if FileManager.default.fileExists(atPath: destinationFileUrl.path) {
-                    try FileManager.default.removeItem(atPath: destinationFileUrl.path)
-                }
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    // overwrite existing file
+                    if FileManager.default.fileExists(atPath: destinationFileUrl.path) {
+                        try FileManager.default.removeItem(atPath: destinationFileUrl.path)
+                    }
 
-                // move file from app_id-Inbox to destination
-                writeLog("Moving '\(url.path)' to '\(destinationFileUrl.path)'")
-                try FileManager.default.moveItem(atPath: url.path, toPath: destinationFileUrl.path)
-            } catch {
-                writeLog(error.localizedDescription)
-                flutterResult?(FlutterError(code: "file_copy_error",
-                                            message: error.localizedDescription,
-                                            details: nil))
+                    // move file from app_id-Inbox to destination
+                    writeLog("Moving '\(url.path)' to '\(destinationFileUrl.path)'")
+                    try FileManager.default.moveItem(atPath: url.path, toPath: destinationFileUrl.path)
+
+                    DispatchQueue.main.async {
+                        // return picked file path
+                        self.flutterResult?(destinationFileUrl.path)
+                    }
+                } catch {
+                    DispatchQueue.main.async {
+                        writeLog(error.localizedDescription)
+                        self.flutterResult?(FlutterError(code: "file_copy_error",
+                                                         message: error.localizedDescription,
+                                                         details: nil))
+                    }
+                    return
+                }
             }
+        } else {
+            // return picked file path
+            flutterResult?(destinationFileUrl.path)
         }
-        // return picked file path
-        flutterResult?(destinationFileUrl.path)
     }
 
     private func cleanupFileName(_ fileName: String) -> String {
