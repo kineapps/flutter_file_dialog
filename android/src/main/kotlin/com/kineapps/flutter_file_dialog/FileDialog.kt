@@ -145,26 +145,22 @@ class FileDialog(
     private fun copyFileToCacheDirOnBackground(
             context: Context,
             sourceFileUri: Uri,
-            destinationFileName: String): Boolean {
-        try {
-            // https://proandroiddev.com/android-coroutine-recipes-33467a4302e9
-            val uiScope = CoroutineScope(Dispatchers.Main)
-
-            Log.d(LOG_TAG, "Launch...")
-            uiScope.launch {
+            destinationFileName: String) {
+        val uiScope = CoroutineScope(Dispatchers.Main)
+        uiScope.launch {
+            try {
+                Log.d(LOG_TAG, "Launch...")
                 Log.d(LOG_TAG, "Copy on background...")
                 val filePath = withContext(Dispatchers.IO) {
                     copyFileToCacheDir(context, sourceFileUri, destinationFileName)
                 }
                 Log.d(LOG_TAG, "...copied on background, result: $filePath")
                 flutterResult?.success(filePath)
+                Log.d(LOG_TAG, "...launch")
+            } catch (e: Exception) {
+                Log.e(LOG_TAG, "copyFileToCacheDirOnBackground failed", e)
+                flutterResult?.error("file_copy_failed", e.localizedMessage, e)
             }
-            Log.d(LOG_TAG, "...launch")
-            return true
-        } catch (e: Exception) {
-            Log.e(LOG_TAG, "copyFileToCacheDirOnBackground failed", e)
-            flutterResult?.error("file_copy_failed", e.localizedMessage, e)
-            return false
         }
     }
 
@@ -235,27 +231,22 @@ class FileDialog(
             sourceFilePath: String,
             destinationFileUri: Uri
     ) {
-        try {
-            // https://proandroiddev.com/android-coroutine-recipes-33467a4302e9
-            val uiScope = CoroutineScope(Dispatchers.Main)
-
-            Log.d(LOG_TAG, "Launch...")
-            uiScope.launch {
+        val uiScope = CoroutineScope(Dispatchers.Main)
+        uiScope.launch {
+            try {
                 Log.d(LOG_TAG, "Saving file on background...")
                 val filePath = withContext(Dispatchers.IO) {
                     saveFile(sourceFilePath, destinationFileUri)
                 }
                 Log.d(LOG_TAG, "...saved file on background, result: $filePath")
                 flutterResult?.success(filePath)
+            } catch (e: SecurityException) {
+                Log.e(LOG_TAG, "saveFileOnBackground", e)
+                flutterResult?.error("security_exception", e.localizedMessage, e)
+            } catch (e: Exception) {
+                Log.e(LOG_TAG, "saveFileOnBackground failed", e)
+                flutterResult?.error("save_file_failed", e.localizedMessage, e)
             }
-            Log.d(LOG_TAG, "...launch")
-        } catch (e: SecurityException) {
-            Log.e(LOG_TAG, "saveFileOnBackground", e)
-            flutterResult?.error("security_exception", e.localizedMessage, e)
-            return
-        } catch (e: Exception) {
-            Log.e(LOG_TAG, "saveFileOnBackground failed", e)
-            flutterResult?.error("save_file_failed", e.localizedMessage, e)
         }
     }
 

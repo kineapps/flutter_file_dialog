@@ -1,3 +1,7 @@
+## 0.0.4
+
+- [Android] Improved error handling.
+
 ## 0.0.3
 
 - [iOS] Use background threads where needed to keep UI more responsive.
