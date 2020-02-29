@@ -1,3 +1,7 @@
+## 0.0.5
+
+[Android] Fixed: any thrown exception caused crash. Now exception is delivered correctly to caller.
+
 ## 0.0.4
 
 - [Android] Improved error handling.
