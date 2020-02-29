@@ -159,7 +159,7 @@ class FileDialog(
                 Log.d(LOG_TAG, "...launch")
             } catch (e: Exception) {
                 Log.e(LOG_TAG, "copyFileToCacheDirOnBackground failed", e)
-                flutterResult?.error("file_copy_failed", e.localizedMessage, e)
+                flutterResult?.error("file_copy_failed", e.localizedMessage, e.toString())
             }
         }
     }
@@ -242,10 +242,10 @@ class FileDialog(
                 flutterResult?.success(filePath)
             } catch (e: SecurityException) {
                 Log.e(LOG_TAG, "saveFileOnBackground", e)
-                flutterResult?.error("security_exception", e.localizedMessage, e)
+                flutterResult?.error("security_exception", e.localizedMessage, e.toString())
             } catch (e: Exception) {
                 Log.e(LOG_TAG, "saveFileOnBackground failed", e)
-                flutterResult?.error("save_file_failed", e.localizedMessage, e)
+                flutterResult?.error("save_file_failed", e.localizedMessage, e.toString())
             }
         }
     }
