@@ -45,3 +45,29 @@ final params = SaveFileDialogParams(sourceFilePath: "path_of_file_to_save");
 final filePath = await FlutterFileDialog.saveFile(params: params);
 print(filePath);
 ```
+
+### Optimize picked image file using flutter_image_utilities
+
+Use the plugin [flutter_image_utilities](https://pub.dev/packages/flutter_image_utilities) to optimize a picked image file.
+
+```dart
+  final params = OpenFileDialogParams(
+    dialogType: OpenFileDialogType.image,
+    sourceType: SourceType.photoLibrary,
+  );
+  final filePath = await FlutterFileDialog.pickFile(params: params);
+  print(filePath);
+
+  if (filePath != null) {
+    final pickedFile = File(filePath)
+
+    // optimize the image file
+    final optimizedFile = await FlutterImageUtilities.saveAsJpeg(
+      sourceFile: pickedFile,
+      quality: 60,
+      maxWidth: 1920,
+      maxHeight: 1024,
+      scaleMode: ScaleMode.fitKeepAspectRatio,
+    );
+  }
+```

@@ -129,7 +129,7 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
         Log.d(LOG_TAG, "onMethodCall - IN , method=${call.method}")
         if (fileDialog == null) {
             if (!createFileDialog()) {
-                result?.error("init_failed", "Not attached", null)
+                result.error("init_failed", "Not attached", null)
                 return
             }
         }
@@ -162,7 +162,6 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
             registrar!!.addActivityResultListener(fileDialog)
         } else if (activityBinding != null) {
             // V2 embedding
-            this.activityBinding = activityBinding
             fileDialog = FileDialog(
                     activity = activityBinding!!.activity
             )
