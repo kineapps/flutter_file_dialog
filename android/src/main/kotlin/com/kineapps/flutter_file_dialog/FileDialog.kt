@@ -62,7 +62,8 @@ class FileDialog(
     fun saveFile(result: MethodChannel.Result,
                  sourceFilePath: String,
                  mimeTypesFilter: Array<String>?,
-                 localOnly: Boolean
+                 localOnly: Boolean,
+                 fileName: String?
     ) {
         Log.d(LOG_TAG, "saveFile - IN, sourceFileName=$sourceFilePath, mimeTypesFilter=$mimeTypesFilter, localOnly=$localOnly")
 
@@ -81,7 +82,7 @@ class FileDialog(
 
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
         intent.addCategory(Intent.CATEGORY_OPENABLE)
-        intent.putExtra(Intent.EXTRA_TITLE, sourceFile.name)
+        intent.putExtra(Intent.EXTRA_TITLE, fileName ?: sourceFile.name)
         if (localOnly) {
             intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true)
         }
