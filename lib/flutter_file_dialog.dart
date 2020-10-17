@@ -92,7 +92,7 @@ class OpenFileDialogParams {
   bool localOnly;
 
   /// Create parameters for the [pickFile] method.
-  OpenFileDialogParams({
+  const OpenFileDialogParams({
     this.dialogType = OpenFileDialogType.document,
     this.sourceType = SourceType.photoLibrary,
     this.allowEditing = false,
