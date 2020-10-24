@@ -77,7 +77,9 @@ struct OpenFileDialogParams {
 
 struct SaveFileDialogParams {
     let sourceFilePath: String?
+    let fileName: String?
     init(data: [String: Any?]) {
         sourceFilePath = data["sourceFilePath"] as? String
+        fileName = data["fileName"] as? String
     }
 }

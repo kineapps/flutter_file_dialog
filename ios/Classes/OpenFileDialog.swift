@@ -62,7 +62,8 @@ class OpenFileDialog: NSObject, UIDocumentPickerDelegate, UIImagePickerControlle
             handlePickedFile(pickedFileUrl)
         } else {
             if let pickedImage: UIImage = info[UIImagePickerController.InfoKey.editedImage] as? UIImage ??
-                info[UIImagePickerController.InfoKey.originalImage] as? UIImage {
+                info[UIImagePickerController.InfoKey.originalImage] as? UIImage
+            {
                 // save picked image to temp dir
                 DispatchQueue.global(qos: .userInitiated).async {
                     do {

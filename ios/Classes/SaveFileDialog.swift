@@ -9,9 +9,11 @@ import UIKit
 class SaveFileDialog: NSObject, UIDocumentPickerDelegate {
     private var flutterResult: FlutterResult?
     private var params: SaveFileDialogParams?
+    private var tempFileUrl: URL?
 
     deinit {
-        writeLog("SaveFileDialog.deinit")
+        writeLog("")
+        deleteTempFile()
     }
 
     func saveFile(_ params: SaveFileDialogParams, result: @escaping FlutterResult) {
@@ -26,7 +28,8 @@ class SaveFileDialog: NSObject, UIDocumentPickerDelegate {
             )
             return
         }
-        let fileUrl = URL(fileURLWithPath: sourceFilePath)
+
+        var fileUrl = URL(fileURLWithPath: sourceFilePath)
 
         // check that source file exists
         if !FileManager.default.fileExists(atPath: sourceFilePath) {
@@ -35,6 +38,30 @@ class SaveFileDialog: NSObject, UIDocumentPickerDelegate {
                                 details: nil)
             )
             return
+        }
+
+        // if file name was specified, create a temp file with the requested file name
+        if params.fileName != nil {
+            let directory = NSTemporaryDirectory()
+            tempFileUrl = NSURL.fileURL(withPathComponents: [directory, params.fileName!])
+
+            do {
+                // overwrite existing file
+                if FileManager.default.fileExists(atPath: tempFileUrl!.path) {
+                    try FileManager.default.removeItem(at: tempFileUrl!)
+                }
+
+                writeLog("Copying \(fileUrl) to \(tempFileUrl!)")
+                try FileManager.default.copyItem(at: fileUrl, to: tempFileUrl!)
+            } catch {
+                writeLog(error.localizedDescription)
+                result(FlutterError(code: "creating_temp_file_failed",
+                                    message: error.localizedDescription,
+                                    details: nil)
+                )
+                return
+            }
+            fileUrl = tempFileUrl!
         }
 
         // get parent view controller
@@ -54,24 +81,41 @@ class SaveFileDialog: NSObject, UIDocumentPickerDelegate {
         parentViewController.present(documentPickerViewController, animated: true, completion: nil)
     }
 
+    private func deleteTempFile() {
+        if tempFileUrl != nil {
+            do {
+                if FileManager.default.fileExists(atPath: tempFileUrl!.path) {
+                    writeLog("Deleting temp file \(tempFileUrl!)")
+                    try FileManager.default.removeItem(at: tempFileUrl!)
+                }
+                tempFileUrl = nil
+            } catch {
+                writeLog(error.localizedDescription)
+            }
+        }
+    }
+
     // MARK: - UIDocumentPickerDelegate
 
-    public func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentAt url: URL) {
+    public func documentPicker(_: UIDocumentPickerViewController, didPickDocumentAt url: URL) {
         writeLog("didPickDocumentAt")
+        deleteTempFile()
         flutterResult?(url.path)
     }
 
     // MARK: - UIDocumentPickerDelegate
 
-    public func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+    public func documentPicker(_: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
         writeLog("didPickDocumentsAt")
+        deleteTempFile()
         flutterResult?(urls[0].path)
     }
 
     // MARK: - UIDocumentPickerDelegate
 
-    public func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+    public func documentPickerWasCancelled(_: UIDocumentPickerViewController) {
         writeLog("documentPickerWasCancelled")
+        deleteTempFile()
         flutterResult?(nil)
     }
 }
