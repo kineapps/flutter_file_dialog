@@ -5,8 +5,10 @@
 
 import Foundation
 
-/// https://github.com/flutter/flutter/issues/13204
-func writeLog(_ message: String) {
-    NSLog("\n" + message)
-    //print(message)
+#if DEBUG
+func writeLog(_ item: @autoclosure () -> Any, _ file: String = #file, _ function: String = #function, _ line: Int = #line) {
+    print("\(Date()) [\((file as NSString).lastPathComponent):\(line) \(function)] \(item())")
 }
+#else
+func writeLog(_ item: @autoclosure () -> Any) {}
+#endif
