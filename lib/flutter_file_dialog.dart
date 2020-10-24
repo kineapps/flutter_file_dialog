@@ -120,6 +120,9 @@ class SaveFileDialogParams {
   /// Path of the file to save.
   String sourceFilePath;
 
+  /// The suggested file name to use when saving the file
+  String fileName;
+
   /// MIME types filter (Android only)
   /// Only files with the provided MIME types will be shown in the file picker.
   final List<String> mimeTypesFilter;
@@ -132,6 +135,7 @@ class SaveFileDialogParams {
     @required this.sourceFilePath,
     this.mimeTypesFilter,
     this.localOnly = false,
+    this.fileName,
   });
 
   Map<String, dynamic> toJson() {
@@ -139,6 +143,7 @@ class SaveFileDialogParams {
       'sourceFilePath': sourceFilePath,
       'mimeTypesFilter': mimeTypesFilter,
       'localOnly': localOnly,
+      'fileName': fileName,
     };
   }
 }

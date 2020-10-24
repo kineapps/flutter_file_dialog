@@ -144,7 +144,8 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
                     result,
                     sourceFilePath = call.argument("sourceFilePath")!!,
                     mimeTypesFilter = parseMethodCallArrayArgument(call, "mimeTypesFilter"),
-                    localOnly = call.argument("localOnly") as Boolean? == true
+                    localOnly = call.argument("localOnly") as Boolean? == true,
+                    fileName = call.argument("fileName") as String?
             )
             else -> result.notImplemented()
         }
