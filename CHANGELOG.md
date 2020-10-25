@@ -1,3 +1,8 @@
+## 1.0.0
+
+- added SaveFileDialogParams.fileName for specifying a suggested file name
+- added SaveFileDialogParams.data for prodiving file data instead of source file path
+
 ## 0.0.5
 
 [Android] Fixed: any thrown exception caused crash. Now exception is delivered correctly to caller.

@@ -1,11 +1,12 @@
 name: flutter_file_dialog
 description: Dialogs for picking and saving files in Android and in iOS.
-version: 0.0.5
+version: 1.0.0
 homepage: https://github.com/kineapps/flutter_file_dialog
 repository: https://github.com/kineapps/flutter_file_dialog
 
 environment:
   sdk: ">=2.6.0 <3.0.0"
+  flutter: ">=1.12.0 <2.0.0"
 
 dependencies:
   flutter:
@@ -21,12 +22,16 @@ dev_dependencies:
 # The following section is specific to Flutter.
 flutter:
   # This section identifies this Flutter project as a plugin project.
-  # The androidPackage and pluginClass identifiers should not ordinarily
+  # The 'pluginClass' and Android 'package' identifiers should not ordinarily
   # be modified. They are used by the tooling to maintain consistency when
   # adding or updating assets for this project.
   plugin:
-    androidPackage: com.kineapps.flutter_file_dialog
-    pluginClass: FlutterFileDialogPlugin
+    platforms:
+      android:
+        package: com.kineapps.flutter_file_dialog
+        pluginClass: FlutterFileDialogPlugin
+      ios:
+        pluginClass: FlutterFileDialogPlugin
   # To add assets to your plugin package, add an assets section, like this:
   # assets:
   #  - images/a_dot_burr.jpeg
