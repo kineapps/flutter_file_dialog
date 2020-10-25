@@ -140,9 +140,9 @@ class SaveFileDialogParams {
   const SaveFileDialogParams({
     this.sourceFilePath,
     this.data,
+    this.fileName,
     this.mimeTypesFilter,
     this.localOnly = false,
-    this.fileName,
   })  : assert(sourceFilePath == null || data == null,
             'sourceFilePath or data should be null'),
         assert(sourceFilePath != null || data != null,
@@ -154,9 +154,9 @@ class SaveFileDialogParams {
     return {
       'sourceFilePath': sourceFilePath,
       'data': data,
+      'fileName': fileName,
       'mimeTypesFilter': mimeTypesFilter,
       'localOnly': localOnly,
-      'fileName': fileName,
     };
   }
 }
