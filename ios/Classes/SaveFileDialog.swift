@@ -20,24 +20,28 @@ class SaveFileDialog: NSObject, UIDocumentPickerDelegate {
         flutterResult = result
         self.params = params
 
-        // get source file URL
-        guard let sourceFilePath = params.sourceFilePath else {
-            result(FlutterError(code: "invalid_arguments",
-                                message: "Missing 'sourceFilePath'",
-                                details: nil)
-            )
-            return
-        }
+        var fileUrl: URL? = nil
 
-        var fileUrl = URL(fileURLWithPath: sourceFilePath)
+        if params.data == nil {
+            // get source file URL
+            guard let sourceFilePath = params.sourceFilePath else {
+                result(FlutterError(code: "invalid_arguments",
+                                    message: "Missing 'sourceFilePath'",
+                                    details: nil)
+                )
+                return
+            }
 
-        // check that source file exists
-        if !FileManager.default.fileExists(atPath: sourceFilePath) {
-            result(FlutterError(code: "file_not_found",
-                                message: "File not found: '\(sourceFilePath)'",
-                                details: nil)
-            )
-            return
+            fileUrl = URL(fileURLWithPath: sourceFilePath)
+
+            // check that source file exists
+            if !FileManager.default.fileExists(atPath: sourceFilePath) {
+                result(FlutterError(code: "file_not_found",
+                                    message: "File not found: '\(sourceFilePath)'",
+                                    details: nil)
+                )
+                return
+            }
         }
 
         // if file name was specified, create a temp file with the requested file name
@@ -51,8 +55,14 @@ class SaveFileDialog: NSObject, UIDocumentPickerDelegate {
                     try FileManager.default.removeItem(at: tempFileUrl!)
                 }
 
-                writeLog("Copying \(fileUrl) to \(tempFileUrl!)")
-                try FileManager.default.copyItem(at: fileUrl, to: tempFileUrl!)
+                if params.data != nil {
+                    writeLog("Writing data \(params.data!.count) bytes to temp file \(tempFileUrl!)")
+                    let d = Data(bytes: params.data!, count: params.data!.count)
+                    try d.write(to: tempFileUrl!)
+                } else {
+                    writeLog("Copying \(fileUrl!) to \(tempFileUrl!)")
+                    try FileManager.default.copyItem(at: fileUrl!, to: tempFileUrl!)
+                }
             } catch {
                 writeLog(error.localizedDescription)
                 result(FlutterError(code: "creating_temp_file_failed",
@@ -74,7 +84,7 @@ class SaveFileDialog: NSObject, UIDocumentPickerDelegate {
         }
 
         // create document picker
-        let documentPickerViewController = UIDocumentPickerViewController(url: fileUrl, in: .exportToService)
+        let documentPickerViewController = UIDocumentPickerViewController(url: fileUrl!, in: .exportToService)
         documentPickerViewController.delegate = self
 
         // show dialog

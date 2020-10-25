@@ -34,7 +34,7 @@ public class SwiftFlutterFileDialogPlugin: NSObject, FlutterPlugin {
 
         case "saveFile":
             saveFileDialog = SaveFileDialog()
-            let params = SaveFileDialogParams(data: args)
+            let params = SaveFileDialogParams(args)
             saveFileDialog!.saveFile(params, result: result)
 
         default:
@@ -77,9 +77,16 @@ struct OpenFileDialogParams {
 
 struct SaveFileDialogParams {
     let sourceFilePath: String?
+    let data: [UInt8]?
     let fileName: String?
-    init(data: [String: Any?]) {
-        sourceFilePath = data["sourceFilePath"] as? String
-        fileName = data["fileName"] as? String
+    init(_ d: [String: Any?]) {
+        sourceFilePath = d["sourceFilePath"] as? String
+        let uint8List = d["data"] as? FlutterStandardTypedData
+        if (uint8List != nil) {
+            data = [UInt8](uint8List!.data)
+        } else {
+            data = nil
+        }
+        fileName = d["fileName"] as? String
     }
 }

@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -118,9 +119,15 @@ class OpenFileDialogParams {
 /// Parameters for the [saveFile] method.
 class SaveFileDialogParams {
   /// Path of the file to save.
+  /// Provide either [sourceFilePath] or [data].
   String sourceFilePath;
 
-  /// The suggested file name to use when saving the file
+  /// File data.
+  /// Provide either [sourceFilePath] or [data].
+  Uint8List data;
+
+  /// The suggested file name to use when saving the file.
+  /// Required if [data] is provided.
   String fileName;
 
   /// MIME types filter (Android only)
@@ -132,15 +139,22 @@ class SaveFileDialogParams {
 
   /// Create parameters for the [saveFile] method.
   SaveFileDialogParams({
-    @required this.sourceFilePath,
+    this.sourceFilePath,
+    this.data,
     this.mimeTypesFilter,
     this.localOnly = false,
     this.fileName,
-  });
+  })  : assert(sourceFilePath == null || data == null,
+            'sourceFilePath or data should be null'),
+        assert(sourceFilePath != null || data != null,
+            'Missing sourceFilePath or data'),
+        assert(
+            data == null || fileName?.isNotEmpty == true, 'Missing fileName');
 
   Map<String, dynamic> toJson() {
     return {
       'sourceFilePath': sourceFilePath,
+      'data': data,
       'mimeTypesFilter': mimeTypesFilter,
       'localOnly': localOnly,
       'fileName': fileName,

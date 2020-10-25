@@ -101,7 +101,11 @@ class _MyAppState extends State<MyApp> {
               ],
               RaisedButton(
                 child: Text('Save file'),
-                onPressed: _currentFile == null ? null : () => _saveFile(),
+                onPressed: _currentFile == null ? null : () => _saveFile(false),
+              ),
+              RaisedButton(
+                child: Text('Save file from data'),
+                onPressed: _currentFile == null ? null : () => _saveFile(true),
               ),
               Text(_savedFilePath ?? "-"),
               if (_isBusy) CircularProgressIndicator(),
@@ -148,14 +152,18 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  Future<void> _saveFile() async {
+  Future<void> _saveFile(bool useData) async {
     String result;
     try {
       setState(() {
         _isBusy = true;
       });
+      final data = useData ? await _currentFile.readAsBytes() : null;
       final params = SaveFileDialogParams(
-          sourceFilePath: _currentFile.path, localOnly: _localOnly);
+          sourceFilePath: useData ? null : _currentFile.path,
+          data: data,
+          localOnly: _localOnly,
+          fileName: useData ? "untitled" : null);
       result = await FlutterFileDialog.saveFile(params: params);
       print(result);
     } on PlatformException catch (e) {
