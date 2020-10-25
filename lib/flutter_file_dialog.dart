@@ -90,10 +90,10 @@ class OpenFileDialogParams {
   final List<String> mimeTypesFilter;
 
   /// Access files in local device only (Android)?
-  bool localOnly;
+  final bool localOnly;
 
   /// Create parameters for the [pickFile] method.
-  OpenFileDialogParams({
+  const OpenFileDialogParams({
     this.dialogType = OpenFileDialogType.document,
     this.sourceType = SourceType.photoLibrary,
     this.allowEditing = false,
