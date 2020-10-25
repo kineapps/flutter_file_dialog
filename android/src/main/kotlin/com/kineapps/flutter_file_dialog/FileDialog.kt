@@ -35,7 +35,8 @@ class FileDialog(
     private var fileExtensionsFilter: Array<String>? = null
 
     // file to be saved
-    private var sourceFilePath: String? = null
+    private var sourceFile: File? = null
+    private var isSourceFileTemp: Boolean = false
 
     fun pickFile(result: MethodChannel.Result,
                  fileExtensionsFilter: Array<String>?,
@@ -60,29 +61,39 @@ class FileDialog(
     }
 
     fun saveFile(result: MethodChannel.Result,
-                 sourceFilePath: String,
+                 sourceFilePath: String?,
+                 data: ByteArray?,
+                 fileName: String?,
                  mimeTypesFilter: Array<String>?,
-                 localOnly: Boolean,
-                 fileName: String?
+                 localOnly: Boolean
     ) {
-        Log.d(LOG_TAG, "saveFile - IN, sourceFileName=$sourceFilePath, mimeTypesFilter=$mimeTypesFilter, localOnly=$localOnly")
+        Log.d(LOG_TAG, "saveFile - IN, sourceFilePath=$sourceFilePath, " +
+                "data=${data?.size} bytes, fileName=$fileName, " +
+                "mimeTypesFilter=$mimeTypesFilter, localOnly=$localOnly")
 
         this.flutterResult = result
-        this.sourceFilePath = sourceFilePath
 
-        // get source file
-        val sourceFile = File(sourceFilePath)
-        if (!sourceFile.exists()) {
-            flutterResult?.error(
-                    "file_not_found",
-                    "Source file is missing",
-                    sourceFilePath)
-            return
+        if (sourceFilePath != null) {
+            isSourceFileTemp = false
+            // get source file
+            sourceFile = File(sourceFilePath)
+            if (!sourceFile!!.exists()) {
+                flutterResult?.error(
+                        "file_not_found",
+                        "Source file is missing",
+                        sourceFilePath)
+                return
+            }
+        } else {
+            // write data to a temporary file
+            isSourceFileTemp = true
+            sourceFile = File.createTempFile(fileName, "")
+            sourceFile!!.writeBytes(data!!)
         }
 
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
         intent.addCategory(Intent.CATEGORY_OPENABLE)
-        intent.putExtra(Intent.EXTRA_TITLE, fileName ?: sourceFile.name)
+        intent.putExtra(Intent.EXTRA_TITLE, fileName ?: sourceFile!!.name)
         if (localOnly) {
             intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true)
         }
@@ -132,9 +143,13 @@ class FileDialog(
             REQUEST_CODE_SAVE_FILE -> {
                 if (resultCode == Activity.RESULT_OK && data?.data != null) {
                     val destinationFileUri = data.data
-                    saveFileOnBackground(this.sourceFilePath!!, destinationFileUri!!)
+                    saveFileOnBackground(this.sourceFile!!, destinationFileUri!!)
                 } else {
                     Log.d(LOG_TAG, "Cancelled")
+                    if (isSourceFileTemp) {
+                        Log.d(LOG_TAG, "Deleting source file: ${sourceFile?.path}")
+                        sourceFile?.delete()
+                    }
                     flutterResult?.success(null)
                 }
                 return true
@@ -229,7 +244,7 @@ class FileDialog(
     }
 
     private fun saveFileOnBackground(
-            sourceFilePath: String,
+            sourceFile: File,
             destinationFileUri: Uri
     ) {
         val uiScope = CoroutineScope(Dispatchers.Main)
@@ -237,7 +252,7 @@ class FileDialog(
             try {
                 Log.d(LOG_TAG, "Saving file on background...")
                 val filePath = withContext(Dispatchers.IO) {
-                    saveFile(sourceFilePath, destinationFileUri)
+                    saveFile(sourceFile, destinationFileUri)
                 }
                 Log.d(LOG_TAG, "...saved file on background, result: $filePath")
                 flutterResult?.success(filePath)
@@ -247,16 +262,19 @@ class FileDialog(
             } catch (e: Exception) {
                 Log.e(LOG_TAG, "saveFileOnBackground failed", e)
                 flutterResult?.error("save_file_failed", e.localizedMessage, e.toString())
+            } finally {
+                if (isSourceFileTemp) {
+                    Log.d(LOG_TAG, "Deleting source file: ${sourceFile.path}")
+                    sourceFile.delete()
+                }
             }
         }
     }
 
     private fun saveFile(
-            sourceFilePath: String,
+            sourceFile: File,
             destinationFileUri: Uri
     ): String {
-        val sourceFile = File(sourceFilePath)
-
         Log.d(LOG_TAG, "Saving file '${sourceFile.path}' to '${destinationFileUri.path}'")
         sourceFile.inputStream().use { inputStream ->
             activity.contentResolver.openOutputStream(destinationFileUri).use { outputStream ->

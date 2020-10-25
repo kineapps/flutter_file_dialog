@@ -142,10 +142,11 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
             )
             "saveFile" -> fileDialog!!.saveFile(
                     result,
-                    sourceFilePath = call.argument("sourceFilePath")!!,
+                    sourceFilePath = call.argument("sourceFilePath"),
+                    data = call.argument("data"),
+                    fileName = call.argument("fileName"),
                     mimeTypesFilter = parseMethodCallArrayArgument(call, "mimeTypesFilter"),
-                    localOnly = call.argument("localOnly") as Boolean? == true,
-                    fileName = call.argument("fileName") as String?
+                    localOnly = call.argument("localOnly") as Boolean? == true
             )
             else -> result.notImplemented()
         }

@@ -147,7 +147,7 @@ class SaveFileDialogParams {
             'sourceFilePath or data should be null'),
         assert(sourceFilePath != null || data != null,
             'Missing sourceFilePath or data'),
-        assert(data == null || fileName == null || fileName == '',
+        assert(data == null || (fileName != null && fileName != ''),
             'Missing fileName');
 
   Map<String, dynamic> toJson() {
