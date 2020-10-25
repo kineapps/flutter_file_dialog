@@ -6,7 +6,6 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 /// File picking/saving dialogs for Android and iOS.
@@ -120,25 +119,25 @@ class OpenFileDialogParams {
 class SaveFileDialogParams {
   /// Path of the file to save.
   /// Provide either [sourceFilePath] or [data].
-  String sourceFilePath;
+  final String sourceFilePath;
 
   /// File data.
   /// Provide either [sourceFilePath] or [data].
-  Uint8List data;
+  final Uint8List data;
 
   /// The suggested file name to use when saving the file.
   /// Required if [data] is provided.
-  String fileName;
+  final String fileName;
 
   /// MIME types filter (Android only)
   /// Only files with the provided MIME types will be shown in the file picker.
   final List<String> mimeTypesFilter;
 
   /// Access files in local device only (Android)?
-  bool localOnly;
+  final bool localOnly;
 
   /// Create parameters for the [saveFile] method.
-  SaveFileDialogParams({
+  const SaveFileDialogParams({
     this.sourceFilePath,
     this.data,
     this.mimeTypesFilter,
@@ -148,8 +147,8 @@ class SaveFileDialogParams {
             'sourceFilePath or data should be null'),
         assert(sourceFilePath != null || data != null,
             'Missing sourceFilePath or data'),
-        assert(
-            data == null || fileName?.isNotEmpty == true, 'Missing fileName');
+        assert(data == null || fileName == null || fileName == '',
+            'Missing fileName');
 
   Map<String, dynamic> toJson() {
     return {
