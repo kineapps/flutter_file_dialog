@@ -4,7 +4,7 @@ Dialogs for picking and saving files in Android and in iOS.
 
 ## Features
 
-- Supports Android and iOS.
+- Supports Android (API level 19 or later) and iOS (11.0 or later).
 - Modern plugin implementation based on Kotlin (Android) and Swift (iOS).
 - Pick image files and other documents.
 - Save a file to a selected location.
