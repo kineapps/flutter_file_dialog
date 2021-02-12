@@ -103,7 +103,7 @@ class OpenFileDialogParams {
   });
 
   Map<String, dynamic> toJson() {
-    return {
+    return <String, dynamic>{
       'dialogType': _openFileDialogTypeToString(dialogType),
       'sourceType': _sourceTypeToString(sourceType),
       'allowEditing': allowEditing,
@@ -151,7 +151,7 @@ class SaveFileDialogParams {
             'Missing fileName');
 
   Map<String, dynamic> toJson() {
-    return {
+    return <String, dynamic>{
       'sourceFilePath': sourceFilePath,
       'data': data,
       'fileName': fileName,
