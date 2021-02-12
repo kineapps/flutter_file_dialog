@@ -49,7 +49,7 @@ class _MyAppState extends State<MyApp> {
                 height: 24,
               ),
               CupertinoSegmentedControl<OpenFileDialogType>(
-                children: {
+                children: const {
                   OpenFileDialogType.document: Text("document"),
                   OpenFileDialogType.image: Text("image"),
                 },
@@ -60,7 +60,7 @@ class _MyAppState extends State<MyApp> {
                 height: 24,
               ),
               CupertinoSegmentedControl<SourceType>(
-                children: {
+                children: const {
                   SourceType.photoLibrary: Text("photoLibrary"),
                   SourceType.savedPhotosAlbum: Text("savedPhotosAlbum"),
                   SourceType.camera: Text("camera"),
@@ -73,7 +73,7 @@ class _MyAppState extends State<MyApp> {
               ),
               if (_dialogType == OpenFileDialogType.image)
                 CheckboxListTile(
-                  title: Text("Allow editing"),
+                  title: const Text("Allow editing"),
                   value: _allowEditing,
                   onChanged: (v) => setState(() => _allowEditing = v),
                 ),
@@ -81,8 +81,8 @@ class _MyAppState extends State<MyApp> {
                 height: 24,
               ),
               RaisedButton(
-                child: Text('Pick file'),
-                onPressed: () => _pickFile(),
+                onPressed: _pickFile,
+                child: const Text('Pick file'),
               ),
               const SizedBox(
                 height: 24,
@@ -100,17 +100,17 @@ class _MyAppState extends State<MyApp> {
                 ),
               ],
               RaisedButton(
-                child: Text('Save file'),
                 onPressed: _currentFile == null ? null : () => _saveFile(false),
+                child: const Text('Save file'),
               ),
               RaisedButton(
-                child: Text('Save file from data'),
                 onPressed: _currentFile == null ? null : () => _saveFile(true),
+                child: const Text('Save file from data'),
               ),
               Text(_savedFilePath ?? "-"),
-              if (_isBusy) CircularProgressIndicator(),
+              if (_isBusy) const CircularProgressIndicator(),
               CheckboxListTile(
-                title: Text("Local only"),
+                title: const Text("Local only"),
                 value: _localOnly,
                 onChanged: (v) => setState(() {
                   _localOnly = v;

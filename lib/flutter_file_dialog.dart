@@ -16,8 +16,8 @@ class FlutterFileDialog {
   ///
   /// Returns the path of the picked file or null if operation was cancelled.
   /// Throws exception on error.
-  static Future<String> pickFile({OpenFileDialogParams params}) async {
-    return await _channel.invokeMethod('pickFile', params?.toJson());
+  static Future<String> pickFile({OpenFileDialogParams params}) {
+    return _channel.invokeMethod('pickFile', params?.toJson());
   }
 
   /// Displays a dialog for selecting a location where to save the file and
@@ -25,8 +25,8 @@ class FlutterFileDialog {
   ///
   /// Returns path of the saved file or null if operation was cancelled.
   /// Throws exception on error.
-  static Future<String> saveFile({SaveFileDialogParams params}) async {
-    return await _channel.invokeMethod('saveFile', params?.toJson());
+  static Future<String> saveFile({SaveFileDialogParams params}) {
+    return _channel.invokeMethod('saveFile', params?.toJson());
   }
 }
 
