@@ -80,7 +80,7 @@ class _MyAppState extends State<MyApp> {
               const SizedBox(
                 height: 24,
               ),
-              RaisedButton(
+              ElevatedButton(
                 onPressed: _pickFile,
                 child: const Text('Pick file'),
               ),
@@ -99,11 +99,11 @@ class _MyAppState extends State<MyApp> {
                   ),
                 ),
               ],
-              RaisedButton(
+              ElevatedButton(
                 onPressed: _currentFile == null ? null : () => _saveFile(false),
                 child: const Text('Save file'),
               ),
-              RaisedButton(
+              ElevatedButton(
                 onPressed: _currentFile == null ? null : () => _saveFile(true),
                 child: const Text('Save file from data'),
               ),

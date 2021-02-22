@@ -16,7 +16,7 @@ class FlutterFileDialog {
   ///
   /// Returns the path of the picked file or null if operation was cancelled.
   /// Throws exception on error.
-  static Future<String> pickFile({OpenFileDialogParams params}) {
+  static Future<String?> pickFile({OpenFileDialogParams? params}) {
     return _channel.invokeMethod('pickFile', params?.toJson());
   }
 
@@ -25,7 +25,7 @@ class FlutterFileDialog {
   ///
   /// Returns path of the saved file or null if operation was cancelled.
   /// Throws exception on error.
-  static Future<String> saveFile({SaveFileDialogParams params}) {
+  static Future<String?> saveFile({SaveFileDialogParams? params}) {
     return _channel.invokeMethod('saveFile', params?.toJson());
   }
 }
@@ -33,7 +33,7 @@ class FlutterFileDialog {
 /// Dialog types for [pickFile] (iOS only)
 enum OpenFileDialogType { document, image }
 
-String _openFileDialogTypeToString(OpenFileDialogType dialogType) {
+String? _openFileDialogTypeToString(OpenFileDialogType dialogType) {
   switch (dialogType) {
     case OpenFileDialogType.document:
       return 'document';
@@ -47,7 +47,7 @@ String _openFileDialogTypeToString(OpenFileDialogType dialogType) {
 /// Source types for [pickFile] (iOS only)
 enum SourceType { camera, photoLibrary, savedPhotosAlbum }
 
-String _sourceTypeToString(SourceType sourceType) {
+String? _sourceTypeToString(SourceType sourceType) {
   switch (sourceType) {
     case SourceType.camera:
       return 'camera';
@@ -79,14 +79,14 @@ class OpenFileDialogParams {
   ///
   /// More info:
   /// https://developer.apple.com/library/archive/qa/qa1587/_index.html
-  final List<String> allowedUtiTypes;
+  final List<String>? allowedUtiTypes;
 
   /// Filter for file extensions (null to allow any extension)
-  final List<String> fileExtensionsFilter;
+  final List<String>? fileExtensionsFilter;
 
   /// MIME types filter (Android only)
   /// Only files with the provided MIME types will be shown in the file picker.
-  final List<String> mimeTypesFilter;
+  final List<String>? mimeTypesFilter;
 
   /// Access files in local device only (Android)?
   final bool localOnly;
@@ -99,7 +99,7 @@ class OpenFileDialogParams {
     this.allowedUtiTypes,
     this.fileExtensionsFilter,
     this.mimeTypesFilter,
-    this.localOnly,
+    this.localOnly = false,
   });
 
   Map<String, dynamic> toJson() {
@@ -119,19 +119,19 @@ class OpenFileDialogParams {
 class SaveFileDialogParams {
   /// Path of the file to save.
   /// Provide either [sourceFilePath] or [data].
-  final String sourceFilePath;
+  final String? sourceFilePath;
 
   /// File data.
   /// Provide either [sourceFilePath] or [data].
-  final Uint8List data;
+  final Uint8List? data;
 
   /// The suggested file name to use when saving the file.
   /// Required if [data] is provided.
-  final String fileName;
+  final String? fileName;
 
   /// MIME types filter (Android only)
   /// Only files with the provided MIME types will be shown in the file picker.
-  final List<String> mimeTypesFilter;
+  final List<String>? mimeTypesFilter;
 
   /// Access files in local device only (Android)?
   final bool localOnly;

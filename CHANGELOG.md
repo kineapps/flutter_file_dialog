@@ -1,3 +1,7 @@
+## 2.0.0
+
+- null safety
+
 ## 1.0.0
 
 - added SaveFileDialogParams.fileName for specifying a suggested file name
