@@ -20,7 +20,7 @@ class SaveFileDialog: NSObject, UIDocumentPickerDelegate {
         flutterResult = result
         self.params = params
 
-        var fileUrl: URL? = nil
+        var fileUrl: URL?
 
         if params.data == nil {
             // get source file URL
@@ -32,12 +32,13 @@ class SaveFileDialog: NSObject, UIDocumentPickerDelegate {
                 return
             }
 
-            fileUrl = URL(fileURLWithPath: sourceFilePath)
+            // note: fileExists fails if path contains relative elements, so standardize the path
+            fileUrl = URL(fileURLWithPath: sourceFilePath).standardized
 
             // check that source file exists
-            if !FileManager.default.fileExists(atPath: sourceFilePath) {
+            if !FileManager.default.fileExists(atPath: fileUrl!.path) {
                 result(FlutterError(code: "file_not_found",
-                                    message: "File not found: '\(sourceFilePath)'",
+                                    message: "File not found: '\(fileUrl!.path)'",
                                     details: nil)
                 )
                 return
