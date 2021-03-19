@@ -67,7 +67,6 @@ Use the plugin [flutter_image_utilities](https://pub.dev/packages/flutter_image_
       quality: 60,
       maxWidth: 1920,
       maxHeight: 1024,
-      scaleMode: ScaleMode.fitKeepAspectRatio,
     );
   }
 ```
