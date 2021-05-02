@@ -114,15 +114,11 @@ class SaveFileDialog: NSObject, UIDocumentPickerDelegate {
         flutterResult?(url.path)
     }
 
-    // MARK: - UIDocumentPickerDelegate
-
     public func documentPicker(_: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
         writeLog("didPickDocumentsAt")
         deleteTempFile()
         flutterResult?(urls[0].path)
     }
-
-    // MARK: - UIDocumentPickerDelegate
 
     public func documentPickerWasCancelled(_: UIDocumentPickerViewController) {
         writeLog("documentPickerWasCancelled")

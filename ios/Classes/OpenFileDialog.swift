@@ -12,7 +12,7 @@ enum OpenFileDialogType: String {
     case image
 }
 
-class OpenFileDialog: NSObject, UIDocumentPickerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+class OpenFileDialog: NSObject, UIDocumentPickerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIAdaptivePresentationControllerDelegate {
     private var flutterResult: FlutterResult?
     private var params: OpenFileDialogParams?
 
@@ -34,7 +34,9 @@ class OpenFileDialog: NSObject, UIDocumentPickerDelegate, UIImagePickerControlle
 
         if params.dialogType == OpenFileDialogType.image {
             let imagePicker = UIImagePickerController()
+            
             if UIImagePickerController.isSourceTypeAvailable(.photoLibrary) {
+                imagePicker.presentationController?.delegate = self
                 imagePicker.delegate = self
                 imagePicker.sourceType = params.sourceType
                 imagePicker.allowsEditing = params.allowEditing
@@ -51,6 +53,14 @@ class OpenFileDialog: NSObject, UIDocumentPickerDelegate, UIImagePickerControlle
 
             viewController.present(documentPickerViewController, animated: true, completion: nil)
         }
+    }
+    
+    // MARK: - UIAdaptivePresentationControllerDelegate
+    
+    public func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+        // called when user swipes the dialog down
+        writeLog("presentationControllerDidDismiss")
+        flutterResult?(nil)
     }
 
     // MARK: - UIImagePickerController
@@ -98,13 +108,13 @@ class OpenFileDialog: NSObject, UIDocumentPickerDelegate, UIImagePickerControlle
             }
         }
     }
-
+    
     public func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
         writeLog("imagePickerController cancelled")
         picker.dismiss(animated: true, completion: nil)
         flutterResult?(nil)
     }
-
+    
     // MARK: - UIDocumentPickerDelegate
 
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentAt url: URL) {
@@ -113,21 +123,18 @@ class OpenFileDialog: NSObject, UIDocumentPickerDelegate, UIImagePickerControlle
         handlePickedFile(url)
     }
 
-    // MARK: - UIDocumentPickerDelegate
-
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
         writeLog("didPickDocumentsAt")
         let url = urls[0]
         handlePickedFile(url)
     }
 
-    // MARK: - UIDocumentPickerDelegate
-
     func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
         writeLog("documentPickerWasCancelled")
         flutterResult?(nil)
     }
 
+    // MARK: -
     private func handlePickedFile(_ url: URL) {
         writeLog("handlePickedFile: \(url.path)")
 
