@@ -91,6 +91,13 @@ class OpenFileDialogParams {
   /// Access files in local device only (Android)?
   final bool localOnly;
 
+  /// Flag telling if the picked file should be copied to the application
+  /// specific cache directory (Android only).
+  ///
+  /// If true, [pickFile] returns path to the copied file.
+  /// If false, [pickFile] returns path to the original picked file.
+  final bool copyFileToCacheDir;
+
   /// Create parameters for the [pickFile] method.
   const OpenFileDialogParams({
     this.dialogType = OpenFileDialogType.document,
@@ -100,6 +107,7 @@ class OpenFileDialogParams {
     this.fileExtensionsFilter,
     this.mimeTypesFilter,
     this.localOnly = false,
+    this.copyFileToCacheDir = true,
   });
 
   Map<String, dynamic> toJson() {
@@ -111,6 +119,7 @@ class OpenFileDialogParams {
       'fileExtensionsFilter': fileExtensionsFilter,
       'mimeTypesFilter': mimeTypesFilter,
       'localOnly': localOnly,
+      'copyFileToCacheDir': copyFileToCacheDir,
     };
   }
 }

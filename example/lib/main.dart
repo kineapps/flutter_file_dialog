@@ -27,6 +27,8 @@ class _MyAppState extends State<MyApp> {
   File _currentFile;
   String _savedFilePath;
   bool _localOnly = false;
+  bool _copyFileToCacheDir = true;
+  String _pickedFilePath;
 
   @override
   void initState() {
@@ -45,50 +47,64 @@ class _MyAppState extends State<MyApp> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              const SizedBox(
-                height: 24,
+              Padding(
+                padding: const EdgeInsets.only(top: 24),
+                child: CupertinoSegmentedControl<OpenFileDialogType>(
+                  children: const {
+                    OpenFileDialogType.document: Text("document"),
+                    OpenFileDialogType.image: Text("image"),
+                  },
+                  groupValue: _dialogType,
+                  onValueChanged: (value) =>
+                      setState(() => _dialogType = value),
+                ),
               ),
-              CupertinoSegmentedControl<OpenFileDialogType>(
-                children: const {
-                  OpenFileDialogType.document: Text("document"),
-                  OpenFileDialogType.image: Text("image"),
-                },
-                groupValue: _dialogType,
-                onValueChanged: (value) => setState(() => _dialogType = value),
-              ),
-              const SizedBox(
-                height: 24,
-              ),
-              CupertinoSegmentedControl<SourceType>(
-                children: const {
-                  SourceType.photoLibrary: Text("photoLibrary"),
-                  SourceType.savedPhotosAlbum: Text("savedPhotosAlbum"),
-                  SourceType.camera: Text("camera"),
-                },
-                groupValue: _sourceType,
-                onValueChanged: (value) => setState(() => _sourceType = value),
-              ),
-              const SizedBox(
-                height: 24,
+              Padding(
+                padding: const EdgeInsets.only(top: 24),
+                child: CupertinoSegmentedControl<SourceType>(
+                  children: const {
+                    SourceType.photoLibrary: Text("photoLibrary"),
+                    SourceType.savedPhotosAlbum: Text("savedPhotosAlbum"),
+                    SourceType.camera: Text("camera"),
+                  },
+                  groupValue: _sourceType,
+                  onValueChanged: (value) =>
+                      setState(() => _sourceType = value),
+                ),
               ),
               if (_dialogType == OpenFileDialogType.image)
-                CheckboxListTile(
-                  title: const Text("Allow editing"),
-                  value: _allowEditing,
-                  onChanged: (v) => setState(() => _allowEditing = v),
+                Padding(
+                  padding: const EdgeInsets.only(top: 24),
+                  child: CheckboxListTile(
+                    title: const Text("Allow editing"),
+                    value: _allowEditing,
+                    onChanged: (v) => setState(() => _allowEditing = v),
+                  ),
+                ),
+              Padding(
+                padding: const EdgeInsets.only(top: 24),
+                child: CheckboxListTile(
+                  title: const Text("Copy file to cache dir"),
+                  value: _copyFileToCacheDir,
+                  onChanged: (v) => setState(() => _copyFileToCacheDir = v),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 24),
+                child: ElevatedButton(
+                  onPressed: _pickFile,
+                  child: const Text('Pick file'),
+                ),
+              ),
+              if (_pickedFilePath?.isNotEmpty == true)
+                Padding(
+                  padding: const EdgeInsets.only(top: 24),
+                  child: Text(_pickedFilePath),
                 ),
               const SizedBox(
                 height: 24,
               ),
-              ElevatedButton(
-                onPressed: _pickFile,
-                child: const Text('Pick file'),
-              ),
-              const SizedBox(
-                height: 24,
-              ),
               if (_currentFile?.existsSync() == true) ...[
-                Text(_currentFile.path),
                 Text(
                     "${(_currentFile.lengthSync() / 1024.0).toStringAsFixed(1)} KB"),
                 SizedBox(
@@ -135,6 +151,7 @@ class _MyAppState extends State<MyApp> {
         sourceType: _sourceType,
         allowEditing: _allowEditing,
         localOnly: _localOnly,
+        copyFileToCacheDir: _copyFileToCacheDir,
       );
       result = await FlutterFileDialog.pickFile(params: params);
       print(result);
@@ -142,6 +159,7 @@ class _MyAppState extends State<MyApp> {
       print(e);
     } finally {
       setState(() {
+        _pickedFilePath = result;
         if (result != null) {
           _currentFile = File(result);
         } else {

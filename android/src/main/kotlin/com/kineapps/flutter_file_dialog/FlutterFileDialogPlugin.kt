@@ -138,7 +138,8 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
                     result,
                     fileExtensionsFilter = parseMethodCallArrayArgument(call, "fileExtensionsFilter"),
                     mimeTypesFilter = parseMethodCallArrayArgument(call, "mimeTypesFilter"),
-                    localOnly = call.argument("localOnly") as Boolean? == true
+                    localOnly = call.argument("localOnly") as Boolean? == true,
+                    copyFileToCacheDir = call.argument("copyFileToCacheDir") as Boolean? != false
             )
             "saveFile" -> fileDialog!!.saveFile(
                     result,

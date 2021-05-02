@@ -33,6 +33,7 @@ class FileDialog(
 
     private var flutterResult: MethodChannel.Result? = null
     private var fileExtensionsFilter: Array<String>? = null
+    private var copyPickedFileToCacheDir: Boolean = true
 
     // file to be saved
     private var sourceFile: File? = null
@@ -41,12 +42,14 @@ class FileDialog(
     fun pickFile(result: MethodChannel.Result,
                  fileExtensionsFilter: Array<String>?,
                  mimeTypesFilter: Array<String>?,
-                 localOnly: Boolean
+                 localOnly: Boolean,
+                 copyFileToCacheDir: Boolean
     ) {
-        Log.d(LOG_TAG, "pickFile - IN, fileExtensionsFilter=$fileExtensionsFilter, mimeTypesFilter=$mimeTypesFilter, localOnly=$localOnly")
+        Log.d(LOG_TAG, "pickFile - IN, fileExtensionsFilter=$fileExtensionsFilter, mimeTypesFilter=$mimeTypesFilter, localOnly=$localOnly, copyFileToCacheDir=$copyFileToCacheDir")
 
         this.flutterResult = result
         this.fileExtensionsFilter = fileExtensionsFilter
+        this.copyPickedFileToCacheDir = copyFileToCacheDir
 
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
         intent.addCategory(Intent.CATEGORY_OPENABLE)
@@ -122,12 +125,17 @@ class FileDialog(
             REQUEST_CODE_PICK_FILE -> {
                 if (resultCode == Activity.RESULT_OK && data?.data != null) {
                     val sourceFileUri = data.data
+                    Log.d(LOG_TAG, "Picked file: $sourceFileUri")
                     val destinationFileName = getFileNameFromPickedDocumentUri(sourceFileUri)
                     if (destinationFileName != null && validateFileExtension(destinationFileName)) {
-                        copyFileToCacheDirOnBackground(
-                                context = activity,
-                                sourceFileUri = sourceFileUri!!,
-                                destinationFileName = destinationFileName)
+                        if (copyPickedFileToCacheDir) {
+                            copyFileToCacheDirOnBackground(
+                                    context = activity,
+                                    sourceFileUri = sourceFileUri!!,
+                                    destinationFileName = destinationFileName)
+                        } else {
+                            flutterResult?.success(sourceFileUri!!.toString())
+                        }
                     } else {
                         flutterResult?.error(
                                 "invalid_file_extension",
