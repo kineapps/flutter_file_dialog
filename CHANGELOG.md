@@ -1,3 +1,10 @@
+## 2.1.0
+
+[iOS] Fixed #14 FlutterFileDialog.pickFile doesn't return value if picker is slid down
+[iOS] Fixed issue with relative paths in saveFile
+[Android] #12 Added a new parameter OpenFileDialogParams.copyFileToCacheDir (Android only)
+[Android] Updated compileSdkVersion and targetSdkVersion to 30
+
 ## 2.0.0
 
 - null safety
