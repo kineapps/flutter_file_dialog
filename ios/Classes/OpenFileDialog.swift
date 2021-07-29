@@ -38,6 +38,7 @@ class OpenFileDialog: NSObject, UIDocumentPickerDelegate, UIImagePickerControlle
             if UIImagePickerController.isSourceTypeAvailable(.photoLibrary) {
                 imagePicker.presentationController?.delegate = self
                 imagePicker.delegate = self
+                imagePicker.presentationController?.delegate = self
                 imagePicker.sourceType = params.sourceType
                 imagePicker.allowsEditing = params.allowEditing
 
@@ -50,6 +51,7 @@ class OpenFileDialog: NSObject, UIDocumentPickerDelegate, UIImagePickerControlle
             let documentPickerViewController = UIDocumentPickerViewController(documentTypes: documentTypes, in: .import)
 
             documentPickerViewController.delegate = self
+            documentPickerViewController.presentationController?.delegate = self
 
             viewController.present(documentPickerViewController, animated: true, completion: nil)
         }
@@ -120,17 +122,20 @@ class OpenFileDialog: NSObject, UIDocumentPickerDelegate, UIImagePickerControlle
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentAt url: URL) {
         // this callback is depracated
         writeLog("didPickDocumentAt")
+        controller.dismiss(animated: true, completion: nil)
         handlePickedFile(url)
     }
 
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
         writeLog("didPickDocumentsAt")
+        controller.dismiss(animated: true, completion: nil)
         let url = urls[0]
         handlePickedFile(url)
     }
 
     func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
         writeLog("documentPickerWasCancelled")
+        controller.dismiss(animated: true, completion: nil)
         flutterResult?(nil)
     }
 
