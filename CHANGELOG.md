@@ -1,3 +1,7 @@
+## 2.1.1
+
+[iOS] Fixed #14 Document picker dialog could not be closed by dragging it down
+
 ## 2.1.0
 
 [iOS] Fixed #14 FlutterFileDialog.pickFile doesn't return value if picker is slid down
