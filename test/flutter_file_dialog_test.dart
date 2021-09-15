@@ -13,8 +13,4 @@ void main() {
   tearDown(() {
     channel.setMockMethodCallHandler(null);
   });
-
-  test('getPlatformVersion', () async {
-    //expect(await FlutterFileDialog.platformVersion, '42');
-  });
 }
