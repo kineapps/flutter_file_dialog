@@ -69,44 +69,54 @@ class OpenFileDialog: NSObject, UIDocumentPickerDelegate, UIImagePickerControlle
 
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
         picker.dismiss(animated: true, completion: nil)
-        if !params!.allowEditing, let pickedFileUrl: URL = info[UIImagePickerController.InfoKey.imageURL] as? URL {
-            writeLog("picked file: " + pickedFileUrl.absoluteString)
-            handlePickedFile(pickedFileUrl)
-        } else {
-            if let pickedImage: UIImage = info[UIImagePickerController.InfoKey.editedImage] as? UIImage ??
-                info[UIImagePickerController.InfoKey.originalImage] as? UIImage
-            {
-                // save picked image to temp dir
-                DispatchQueue.global(qos: .userInitiated).async {
-                    do {
-                        let directory = NSTemporaryDirectory()
-
-                        let dateFormatter = DateFormatter()
-                        dateFormatter.dateFormat = "yyyyMMddHHmmss"
-
-                        let fileName = dateFormatter.string(from: Date()) + ".jpg"
-
-                        let destinationFileUrl = NSURL.fileURL(withPathComponents: [directory, fileName])!
-
-                        let jpeg = pickedImage.jpegData(compressionQuality: CGFloat(1.0))!
-                        try jpeg.write(to: destinationFileUrl)
-
-                        // return picked file path
-                        DispatchQueue.main.async {
-                            writeLog("Saved picked image to: " + destinationFileUrl.path)
-                            self.flutterResult?(destinationFileUrl.path)
-                        }
-                    } catch {
-                        DispatchQueue.main.async {
-                            writeLog(error.localizedDescription)
-                            self.flutterResult?(FlutterError(code: "file_copy_error",
-                                                             message: error.localizedDescription,
-                                                             details: nil))
+        if #available(iOS 11.0, *) {
+            if !params!.allowEditing, let pickedFileUrl: URL = info[UIImagePickerController.InfoKey.imageURL] as? URL {
+                writeLog("picked file: " + pickedFileUrl.absoluteString)
+                handlePickedFile(pickedFileUrl)
+            } else {
+                if let pickedImage: UIImage = info[UIImagePickerController.InfoKey.editedImage] as? UIImage ??
+                    info[UIImagePickerController.InfoKey.originalImage] as? UIImage
+                {
+                    // save picked image to temp dir
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        do {
+                            let directory = NSTemporaryDirectory()
+                            
+                            let dateFormatter = DateFormatter()
+                            dateFormatter.dateFormat = "yyyyMMddHHmmss"
+                            
+                            let fileName = dateFormatter.string(from: Date()) + ".jpg"
+                            
+                            let destinationFileUrl = NSURL.fileURL(withPathComponents: [directory, fileName])!
+                            
+                            let jpeg = pickedImage.jpegData(compressionQuality: CGFloat(1.0))!
+                            try jpeg.write(to: destinationFileUrl)
+                            
+                            // return picked file path
+                            DispatchQueue.main.async {
+                                writeLog("Saved picked image to: " + destinationFileUrl.path)
+                                self.flutterResult?(destinationFileUrl.path)
+                            }
+                        } catch {
+                            DispatchQueue.main.async {
+                                writeLog(error.localizedDescription)
+                                self.flutterResult?(FlutterError(code: "file_copy_error",
+                                                                 message: error.localizedDescription,
+                                                                 details: nil))
+                            }
                         }
                     }
+                } else {
+                    flutterResult?(nil)
                 }
-            } else {
-                flutterResult?(nil)
+            }
+        } else {
+            // Fallback on earlier versions
+            DispatchQueue.main.async {
+                writeLog("iOS 11 or higher required")
+                self.flutterResult?(FlutterError(code: "minimum_target",
+                                                 message: "iOS 11 or higher required",
+                                                 details: nil))
             }
         }
     }
