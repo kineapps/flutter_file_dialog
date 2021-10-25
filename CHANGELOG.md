@@ -1,3 +1,7 @@
+## 2.3.0
+
+- [iOS] Added support for iOS 10
+
 ## 2.2.0
 
 - [Android] upgraded gradle
