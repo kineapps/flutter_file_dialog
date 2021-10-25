@@ -1,3 +1,12 @@
+## 2.2.0
+
+- [Android] upgraded gradle
+- [Android] jcenter => mavenCentral
+- [Android] removed obsolete android.enableR8
+- [Android] updated to Kotlin 1.5.30
+- [Android] set compileSdkVersion to 31
+- [Android] Removed V1 embedding
+
 ## 2.1.1
 
 [iOS] Fixed #14 Document picker dialog could not be closed by dragging it down
