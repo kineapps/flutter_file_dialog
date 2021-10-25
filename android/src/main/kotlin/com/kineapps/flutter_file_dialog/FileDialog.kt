@@ -90,7 +90,7 @@ class FileDialog(
         } else {
             // write data to a temporary file
             isSourceFileTemp = true
-            sourceFile = File.createTempFile(fileName, "")
+            sourceFile = File.createTempFile(fileName!!, "")
             sourceFile!!.writeBytes(data!!)
         }
 
@@ -203,7 +203,7 @@ class FileDialog(
 
         // copy file to cache dir
         Log.d(LOG_TAG, "Copying '$sourceFileUri' to '${destinationFile.path}'")
-        var copiedBytes: Long = 0
+        var copiedBytes: Long
         context.contentResolver.openInputStream(sourceFileUri).use { inputStream ->
             destinationFile.outputStream().use { outputStream ->
                 copiedBytes = inputStream!!.copyTo(outputStream)
@@ -222,7 +222,7 @@ class FileDialog(
         var fileName: String? = null
         activity.contentResolver.query(uri, null, null, null, null, null)?.use { cursor ->
             if (cursor.moveToFirst()) {
-                fileName = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME))
+                fileName = cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME))
             }
         }
         return cleanupFileName(fileName)
