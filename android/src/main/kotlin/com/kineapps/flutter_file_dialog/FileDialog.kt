@@ -31,7 +31,7 @@ class FileDialog(
         private val activity: Activity
 ) : PluginRegistry.ActivityResultListener {
 
-    private var flutterResult: MethodChannel.Result? = null
+    private var pendingResult: MethodChannel.Result? = null
     private var fileExtensionsFilter: Array<String>? = null
     private var copyPickedFileToCacheDir: Boolean = true
 
@@ -47,7 +47,11 @@ class FileDialog(
     ) {
         Log.d(LOG_TAG, "pickFile - IN, fileExtensionsFilter=$fileExtensionsFilter, mimeTypesFilter=$mimeTypesFilter, localOnly=$localOnly, copyFileToCacheDir=$copyFileToCacheDir")
 
-        this.flutterResult = result
+        if (!setPendingResult(result)) {
+            finishWithAlreadyActiveError(result)
+            return
+        }
+
         this.fileExtensionsFilter = fileExtensionsFilter
         this.copyPickedFileToCacheDir = copyFileToCacheDir
 
@@ -74,14 +78,17 @@ class FileDialog(
                 "data=${data?.size} bytes, fileName=$fileName, " +
                 "mimeTypesFilter=$mimeTypesFilter, localOnly=$localOnly")
 
-        this.flutterResult = result
+        if (!setPendingResult(result)) {
+            finishWithAlreadyActiveError(result)
+            return
+        }
 
         if (sourceFilePath != null) {
             isSourceFileTemp = false
             // get source file
             sourceFile = File(sourceFilePath)
             if (!sourceFile!!.exists()) {
-                flutterResult?.error(
+                finishWithError(
                         "file_not_found",
                         "Source file is missing",
                         sourceFilePath)
@@ -134,17 +141,17 @@ class FileDialog(
                                     sourceFileUri = sourceFileUri!!,
                                     destinationFileName = destinationFileName)
                         } else {
-                            flutterResult?.success(sourceFileUri!!.toString())
+                            finishSuccessfully(sourceFileUri!!.toString())
                         }
                     } else {
-                        flutterResult?.error(
+                        finishWithError(
                                 "invalid_file_extension",
                                 "Invalid file type was picked",
                                 getFileExtension(destinationFileName))
                     }
                 } else {
                     Log.d(LOG_TAG, "Cancelled")
-                    flutterResult?.success(null)
+                    finishSuccessfully(null)
                 }
                 return true
             }
@@ -158,7 +165,7 @@ class FileDialog(
                         Log.d(LOG_TAG, "Deleting source file: ${sourceFile?.path}")
                         sourceFile?.delete()
                     }
-                    flutterResult?.success(null)
+                    finishSuccessfully(null)
                 }
                 return true
             }
@@ -179,11 +186,11 @@ class FileDialog(
                     copyFileToCacheDir(context, sourceFileUri, destinationFileName)
                 }
                 Log.d(LOG_TAG, "...copied on background, result: $filePath")
-                flutterResult?.success(filePath)
+                finishSuccessfully(filePath)
                 Log.d(LOG_TAG, "...launch")
             } catch (e: Exception) {
                 Log.e(LOG_TAG, "copyFileToCacheDirOnBackground failed", e)
-                flutterResult?.error("file_copy_failed", e.localizedMessage, e.toString())
+                finishWithError("file_copy_failed", e.localizedMessage, e.toString())
             }
         }
     }
@@ -263,13 +270,13 @@ class FileDialog(
                     saveFile(sourceFile, destinationFileUri)
                 }
                 Log.d(LOG_TAG, "...saved file on background, result: $filePath")
-                flutterResult?.success(filePath)
+                finishSuccessfully(filePath)
             } catch (e: SecurityException) {
                 Log.e(LOG_TAG, "saveFileOnBackground", e)
-                flutterResult?.error("security_exception", e.localizedMessage, e.toString())
+                finishWithError("security_exception", e.localizedMessage, e.toString())
             } catch (e: Exception) {
                 Log.e(LOG_TAG, "saveFileOnBackground failed", e)
-                flutterResult?.error("save_file_failed", e.localizedMessage, e.toString())
+                finishWithError("save_file_failed", e.localizedMessage, e.toString())
             } finally {
                 if (isSourceFileTemp) {
                     Log.d(LOG_TAG, "Deleting source file: ${sourceFile.path}")
@@ -291,5 +298,33 @@ class FileDialog(
         }
         Log.d(LOG_TAG, "Saved file to '${destinationFileUri.path}'")
         return destinationFileUri.path!!
+    }
+
+    private fun setPendingResult(
+        result: MethodChannel.Result
+    ): Boolean {
+        if (pendingResult != null) {
+            return false
+        }
+        pendingResult = result
+        return true
+    }
+
+    private fun clearPendingResult() {
+        pendingResult = null
+    }
+
+    private fun finishWithAlreadyActiveError(result: MethodChannel.Result) {
+        result.error("already_active", "File dialog is already active", null)
+    }
+
+    private fun finishSuccessfully(filePath: String?) {
+        pendingResult?.success(filePath)
+        clearPendingResult()
+    }
+
+    private fun finishWithError(errorCode: String, errorMessage: String?, errorDetails: String?) {
+        pendingResult?.error(errorCode, errorMessage, errorDetails)
+        clearPendingResult()
     }
 }
