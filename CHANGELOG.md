@@ -1,5 +1,7 @@
-## 2.3.0
+## 2.4.0 - August 19 2022
+- Flutter 3.0 Minimum SDK
 
+## 2.3.0
 - [iOS] Added support for iOS 10
 
 ## 2.2.0
