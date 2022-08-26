@@ -1,3 +1,7 @@
+## 2.3.1
+
+- [Android] Fixed #31: java.lang.IllegalStateException Reply already submitted
+
 ## 2.3.0
 
 - [iOS] Added support for iOS 10
