@@ -1,3 +1,7 @@
+## 2.3.2
+
+- [Android] Fixed #28: Extra content being saved to end of file sometimes. Thanks to @[hygehyge](https://github.com/hygehyge)!
+
 ## 2.3.1
 
 - [Android] Fixed #31: java.lang.IllegalStateException Reply already submitted
