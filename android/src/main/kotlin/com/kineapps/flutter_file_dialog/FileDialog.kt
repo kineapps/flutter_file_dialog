@@ -293,6 +293,8 @@ class FileDialog(
         Log.d(LOG_TAG, "Saving file '${sourceFile.path}' to '${destinationFileUri.path}'")
         sourceFile.inputStream().use { inputStream ->
             activity.contentResolver.openOutputStream(destinationFileUri).use { outputStream ->
+                outputStream as java.io.FileOutputStream
+                outputStream.channel.truncate(0)
                 inputStream.copyTo(outputStream!!)
             }
         }
