@@ -9,8 +9,10 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.provider.OpenableColumns
 import android.util.Log
+import androidx.annotation.RequiresApi
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry
 import kotlinx.coroutines.CoroutineScope
@@ -21,6 +23,7 @@ import java.io.File
 
 private const val LOG_TAG = "FileDialog"
 
+private const val REQUEST_CODE_PICK_DIR = 19110
 private const val REQUEST_CODE_PICK_FILE = 19111
 private const val REQUEST_CODE_SAVE_FILE = 19112
 
@@ -38,6 +41,25 @@ class FileDialog(
     // file to be saved
     private var sourceFile: File? = null
     private var isSourceFileTemp: Boolean = false
+
+    fun pickDirectory(result: MethodChannel.Result) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            finishSuccessfully(null);
+            return
+        }
+
+        Log.d(LOG_TAG, "pickDirectory - IN")
+
+        if (!setPendingResult(result)) {
+            finishWithAlreadyActiveError(result)
+            return
+        }
+
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+        activity.startActivityForResult(intent, REQUEST_CODE_PICK_DIR)
+
+        Log.d(LOG_TAG, "pickDirectory - OUT")
+    }
 
     fun pickFile(result: MethodChannel.Result,
                  fileExtensionsFilter: Array<String>?,
@@ -129,6 +151,17 @@ class FileDialog(
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
         when (requestCode) {
+            REQUEST_CODE_PICK_DIR -> {
+                if (resultCode == Activity.RESULT_OK && data?.data != null) {
+                    val sourceFileUri = data.data
+                    Log.d(LOG_TAG, "Picked directory: $sourceFileUri")
+                    finishSuccessfully(sourceFileUri!!.toString())
+                } else {
+                    Log.d(LOG_TAG, "Cancelled")
+                    finishSuccessfully(null)
+                }
+                return true
+            }
             REQUEST_CODE_PICK_FILE -> {
                 if (resultCode == Activity.RESULT_OK && data?.data != null) {
                     val sourceFileUri = data.data

@@ -20,6 +20,16 @@ class FlutterFileDialog {
     return _channel.invokeMethod('pickFile', params?.toJson());
   }
 
+  /// Displays a dialog for picking a directory.
+  ///
+  /// Returns the path of the picked directory or null if operation was cancelled.
+  /// Throws exception on error.
+  static Future<DirectoryLocation?> pickDirectory() async {
+    final uriString = await _channel.invokeMethod('pickDirectory');
+    if (uriString == null) return null;
+    return DirectoryLocation._(uriString);
+  }
+
   /// Displays a dialog for selecting a location where to save the file and
   /// saves the file to the selected location.
   ///
@@ -28,6 +38,35 @@ class FlutterFileDialog {
   static Future<String?> saveFile({SaveFileDialogParams? params}) {
     return _channel.invokeMethod('saveFile', params?.toJson());
   }
+
+  /// Save a file to specified directory that picked by [pickDirectory].
+  /// This method has no dialog, the file is saving in background, be sure the
+  /// [dir] is permission granted.
+  ///
+  /// Returns path of the saved file.
+  /// Throws exception on error.
+  static Future<String?> saveFileToDirectory({
+    required DirectoryLocation dir,
+    required Uint8List data,
+    required String fileName,
+    required String mime,
+  }
+) {
+    return _channel.invokeMethod('saveFileToDirectory', {
+      'dirPath': dir._rawUri,
+      'data': data,
+      'fileName': fileName,
+      'mimeType': mime,
+    });
+  }
+}
+
+class DirectoryLocation {
+  final String _rawUri;
+
+  DirectoryLocation._(this._rawUri);
+
+  String toString() => _rawUri;
 }
 
 /// Dialog types for [pickFile] (iOS only)
