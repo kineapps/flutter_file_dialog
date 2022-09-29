@@ -9,7 +9,6 @@ import android.app.Activity
 import android.net.Uri
 import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresApi
 import androidx.documentfile.provider.DocumentFile
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -19,7 +18,6 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
-import java.io.File
 
 class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
     private var fileDialog: FileDialog? = null
@@ -130,7 +128,7 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
                     result,
                     mimeType = call.argument("mimeType") as String?,
                     fileName = call.argument("fileName") as String?,
-                    dirPath = call.argument("dirPath") as String?,
+                    directory = call.argument("directory") as String?,
                     data = call.argument("data") as ByteArray?,
             )
             "pickFile" -> fileDialog!!.pickFile(
@@ -154,40 +152,49 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
 
     private fun saveFileToDirectory(
             result: Result,
-            dirPath: String?,
+            directory: String?,
             mimeType: String?,
             fileName: String?,
             data: ByteArray?,
     ) {
-        Log.d(LOG_TAG, "saveFileToDirectory - IN")
-
-        if (dirPath == null || dirPath.isEmpty()) {
-            result.error("param_missing_dirpath", "Argument dirPath is required", null)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            result.error(
+                    "minimum_target",
+                    "saveFileToDirectory() available only on Android 21 and above",
+                    ""
+            )
             return
         }
 
-        val dirURI: Uri = Uri.parse(dirPath)
+        Log.d(LOG_TAG, "saveFileToDirectory - IN")
+
+        if (directory == null || directory.isEmpty()) {
+            result.error("invalid_arguments", "Missing 'directory'", null)
+            return
+        }
 
         if (mimeType == null || mimeType.isEmpty()) {
-            result.error("param_missing_mimeType", "Argument mimeType is required", null)
+            result.error("invalid_arguments", "Missing 'mimeType'", null)
             return
         }
 
         if (fileName == null || fileName.isEmpty()) {
-            result.error("param_missing_filename", "Argument fileName is required", null)
+            result.error("invalid_arguments", "Missing 'fileName'", null)
             return
         }
 
         if (data == null) {
-            result.error("param_missing_data", "Argument data is required", null)
+            result.error("invalid_arguments", "Missing 'data'", null)
             return
         }
 
         if (activityBinding != null) {
+            val dirURI: Uri = Uri.parse(directory)
             val activity = activityBinding!!.activity
             val outputFolder: DocumentFile? = DocumentFile.fromTreeUri(activity, dirURI)
             val newFile = outputFolder!!.createFile(mimeType, fileName);
-            result.success(writeFile(activity, data, newFile!!.uri))
+            writeFile(activity, data, newFile!!.uri)
+            result.success(newFile.uri.path)
         }
 
         Log.d(LOG_TAG, "saveFileToDirectory - OUT")
@@ -197,16 +204,13 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
             activity: Activity,
             data: ByteArray,
             destinationFileUri: Uri
-    ): String {
-        Log.d(LOG_TAG, "writeFile - IN , data.size=${data.size} , destinationFileUri='${destinationFileUri.path}'")
-
+    ) {
         activity.contentResolver.openOutputStream(destinationFileUri).use { outputStream ->
             outputStream as java.io.FileOutputStream
             outputStream.channel.truncate(0)
             outputStream.write(data)
         }
         Log.d(LOG_TAG, "Saved file to '${destinationFileUri.path}'")
-        return destinationFileUri.path!!
     }
 
     private fun createFileDialog(): Boolean {

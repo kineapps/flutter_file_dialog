@@ -12,7 +12,6 @@ import android.net.Uri
 import android.os.Build
 import android.provider.OpenableColumns
 import android.util.Log
-import androidx.annotation.RequiresApi
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry
 import kotlinx.coroutines.CoroutineScope
@@ -44,7 +43,11 @@ class FileDialog(
 
     fun pickDirectory(result: MethodChannel.Result) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            finishSuccessfully(null);
+            finishWithError(
+                    "minimum_target",
+                    "pickDirectory() available only on Android 21 and above",
+                    ""
+            )
             return
         }
 

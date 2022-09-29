@@ -16,6 +16,67 @@ class SaveFileDialog: NSObject, UIDocumentPickerDelegate {
         deleteTempFile()
     }
 
+    func saveFileToDirectory(_ params: SaveFileToDirectoryParams, result: @escaping FlutterResult) {
+        if params.data == nil {
+            result(FlutterError(code: "invalid_arguments",
+                                message: "Missing 'data'",
+                                details: nil)
+            )
+            return
+        }
+
+        if params.directory == nil {
+            result(FlutterError(code: "invalid_arguments",
+                                message: "Missing 'directory'",
+                                details: nil)
+            )
+            return
+        }
+        let directory = URL(string: params.directory!)!
+
+        if params.fileName == nil || params.fileName!.isEmpty {
+            result(FlutterError(code: "invalid_arguments",
+                                message: "Missing 'fileName'",
+                                details: nil)
+            )
+            return
+        }
+
+        let fileUrl = directory.appendingPathComponent(params.fileName!, isDirectory: false)
+
+        if FileManager.default.fileExists(atPath: fileUrl.path) {
+            if !params.replace {
+                result(FlutterError(code: "file_already_exists",
+                                    message: "File already exists: '\(fileUrl.absoluteString)'",
+                                    details: nil)
+                )
+                return
+            }
+
+            do {
+                try FileManager.default.removeItem(at: fileUrl)
+            } catch {
+                writeLog("unable to remove exists file: \(error.localizedDescription)")
+                result(FlutterError(code: "file_remove_failed",
+                                    message: error.localizedDescription,
+                                    details: nil)
+                )
+                return
+            }
+        }
+
+        let fileContents = Data(bytes: params.data!, count: params.data!.count)
+        if !FileManager.default.createFile(atPath: fileUrl.path, contents: fileContents) {
+            result(FlutterError(code: "file_create_failed",
+                                message: "File create failed: '\(fileUrl.absoluteString)'",
+                                details: nil)
+            )
+            return
+        }
+
+        result(fileUrl.path)
+    }
+
     func saveFile(_ params: SaveFileDialogParams, result: @escaping FlutterResult) {
         flutterResult = result
         self.params = params

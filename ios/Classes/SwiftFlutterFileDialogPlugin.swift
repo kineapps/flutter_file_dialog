@@ -22,11 +22,23 @@ public class SwiftFlutterFileDialogPlugin: NSObject, FlutterPlugin {
 
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         writeLog(call.method)
+
+        if (call.method == "pickDirectory") {
+            openFileDialog = OpenFileDialog()
+            openFileDialog!.pickDirectory(result: result)
+            return
+        }
+
         guard let args = call.arguments as? [String: Any] else {
             result(FlutterError(code: "invalid_args", message: nil, details: nil))
             return
         }
         switch call.method {
+        case "saveFileToDirectory":
+            saveFileDialog = SaveFileDialog()
+            let params = SaveFileToDirectoryParams(args: args)
+            saveFileDialog?.saveFileToDirectory(params, result: result)
+
         case "pickFile":
             openFileDialog = OpenFileDialog()
             let params = OpenFileDialogParams(data: args)
@@ -88,5 +100,24 @@ struct SaveFileDialogParams {
             data = nil
         }
         fileName = d["fileName"] as? String
+    }
+}
+
+struct SaveFileToDirectoryParams {
+    let directory: String?
+    let data: [UInt8]?
+    let fileName: String?
+    let replace: Bool
+
+    init(args: [String: Any?]) {
+        directory = args["directory"] as? String
+        fileName = args["fileName"] as? String
+        replace = args["replace"] as? Bool ?? false
+        let uint8List = args["data"] as? FlutterStandardTypedData
+        if (uint8List != nil) {
+            data = [UInt8](uint8List!.data)
+        } else {
+            data = nil
+        }
     }
 }
