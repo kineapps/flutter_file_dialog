@@ -12,7 +12,9 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 
-void main() => runApp(MyApp());
+void main() => runApp(MaterialApp(
+  home: MyApp(),
+));
 
 class MyApp extends StatefulWidget {
   @override
@@ -24,11 +26,13 @@ class _MyAppState extends State<MyApp> {
   OpenFileDialogType _dialogType = OpenFileDialogType.image;
   SourceType _sourceType = SourceType.photoLibrary;
   bool _allowEditing = false;
-  File _currentFile;
-  String _savedFilePath;
+  File? _currentFile;
+  String? _savedFilePath;
   bool _localOnly = false;
   bool _copyFileToCacheDir = true;
-  String _pickedFilePath;
+  String? _pickedFilePath;
+
+  DirectoryLocation? _pickedDirecotry;
 
   @override
   void initState() {
@@ -37,8 +41,7 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
+    return Scaffold(
         appBar: AppBar(
           title: const Text('FlutterFileDialog test app'),
         ),
@@ -78,7 +81,7 @@ class _MyAppState extends State<MyApp> {
                   child: CheckboxListTile(
                     title: const Text("Allow editing"),
                     value: _allowEditing,
-                    onChanged: (v) => setState(() => _allowEditing = v),
+                    onChanged: (v) => setState(() => _allowEditing = v == true),
                   ),
                 ),
               Padding(
@@ -86,7 +89,7 @@ class _MyAppState extends State<MyApp> {
                 child: CheckboxListTile(
                   title: const Text("Copy file to cache dir"),
                   value: _copyFileToCacheDir,
-                  onChanged: (v) => setState(() => _copyFileToCacheDir = v),
+                  onChanged: (v) => setState(() => _copyFileToCacheDir = v == true),
                 ),
               ),
               Padding(
@@ -96,22 +99,44 @@ class _MyAppState extends State<MyApp> {
                   child: const Text('Pick file'),
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.only(top: 24),
+                child: ElevatedButton(
+                  onPressed: _pickDirectory,
+                  child: const Text('Pick directory'),
+                ),
+              ),
+              if (_pickedDirecotry != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 24),
+                  child: Text(_pickedDirecotry!.toString()),
+                ),
+
+              if (_pickedDirecotry != null && _currentFile != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 24),
+                  child: ElevatedButton(
+                    onPressed: _saveFileToDirectory,
+                    child: const Text('Save File to directory'),
+                  ),
+                ),
+
               if (_pickedFilePath?.isNotEmpty == true)
                 Padding(
                   padding: const EdgeInsets.only(top: 24),
-                  child: Text(_pickedFilePath),
+                  child: Text(_pickedFilePath!),
                 ),
               const SizedBox(
                 height: 24,
               ),
               if (_currentFile?.existsSync() == true) ...[
                 Text(
-                    "${(_currentFile.lengthSync() / 1024.0).toStringAsFixed(1)} KB"),
+                    "${(_currentFile!.lengthSync() / 1024.0).toStringAsFixed(1)} KB"),
                 SizedBox(
                   width: 200,
                   height: 200,
                   child: Image.file(
-                    _currentFile,
+                    _currentFile!,
                   ),
                 ),
               ],
@@ -129,18 +154,17 @@ class _MyAppState extends State<MyApp> {
                 title: const Text("Local only"),
                 value: _localOnly,
                 onChanged: (v) => setState(() {
-                  _localOnly = v;
+                  _localOnly = v == true;
                 }),
               ),
             ],
           ),
         ),
-      ),
     );
   }
 
   Future<void> _pickFile() async {
-    String result;
+    String? result;
     try {
       setState(() {
         _isBusy = true;
@@ -170,15 +194,66 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
+  _pickDirectory() async {
+    _pickedDirecotry = (await FlutterFileDialog.pickDirectory());
+    setState(() {});
+  }
+
+  _saveFileToDirectory() async {
+    String ext = _currentFile!.path.split('.').last;
+    if (ext == 'jpg') ext = 'jpeg';
+
+    final fileData = _currentFile!.readAsBytesSync();
+    final mimeType = 'image/$ext';
+    final newFileName = 'abc123.$ext';
+
+    FlutterFileDialog.saveFileToDirectory(
+      directory: _pickedDirecotry!,
+      data: fileData,
+      mimeType: mimeType,
+      fileName: newFileName,
+      replace: false,
+      onFileExists: () async {
+        await showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return SimpleDialog(
+              title: const Text('File already exists'),
+              children: <Widget>[
+                SimpleDialogOption(
+                  child: const Text('Cancel'),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                SimpleDialogOption(
+                  child: const Text('Replace'),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    FlutterFileDialog.saveFileToDirectory(
+                      directory: _pickedDirecotry!,
+                      data: fileData,
+                      mimeType: mimeType,
+                      fileName: newFileName,
+                      replace: true,
+                    );
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _saveFile(bool useData) async {
-    String result;
+    String? result;
     try {
       setState(() {
         _isBusy = true;
       });
-      final data = useData ? await _currentFile.readAsBytes() : null;
+      final data = useData ? await _currentFile!.readAsBytes() : null;
       final params = SaveFileDialogParams(
-          sourceFilePath: useData ? null : _currentFile.path,
+          sourceFilePath: useData ? null : _currentFile!.path,
           data: data,
           localOnly: _localOnly,
           fileName: useData ? "untitled" : null);
