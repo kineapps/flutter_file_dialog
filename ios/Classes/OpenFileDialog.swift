@@ -182,7 +182,23 @@ class OpenFileDialog: NSObject, UIDocumentPickerDelegate, UIImagePickerControlle
         writeLog("handlePickedFile: isPickDirectory = \(isPickDirectory), url = '\(url)'")
 
         if (isPickDirectory) {
-            flutterResult?(url.absoluteString)
+            do {
+                guard url.startAccessingSecurityScopedResource() else {
+                    flutterResult?(FlutterError(code: "permission_granted_error",
+                                                message: "",
+                                                details: nil))
+                    return
+                }
+                defer { url.stopAccessingSecurityScopedResource() }
+
+                let bookmarkData = try url.bookmarkData(options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil)
+                flutterResult?(bookmarkData.base64EncodedString())
+            } catch let error {
+                flutterResult?(FlutterError(code: "permission_granted_error",
+                                            message: error.localizedDescription,
+                                            details: nil))
+            }
+
             return
         }
 

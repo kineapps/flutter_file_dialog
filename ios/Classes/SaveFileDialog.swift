@@ -32,7 +32,25 @@ class SaveFileDialog: NSObject, UIDocumentPickerDelegate {
             )
             return
         }
-        let directory = URL(string: params.directory!)!
+
+        var directory: URL?
+        do {
+            var isStale = false
+            directory = try URL(resolvingBookmarkData: Data(base64Encoded: params.directory!)!, bookmarkDataIsStale: &isStale)
+            if (isStale) {
+                result(FlutterError(code: "accessing_stale",
+                                    message: "picked directory accessing staled",
+                                    details: nil)
+                )
+                return
+            }
+        } catch let error {
+            result(FlutterError(code: "invalid_arguments",
+                                message: "invalid 'directory' data",
+                                details: error.localizedDescription)
+            )
+            return
+        }
 
         if params.fileName == nil || params.fileName!.isEmpty {
             result(FlutterError(code: "invalid_arguments",
@@ -42,7 +60,7 @@ class SaveFileDialog: NSObject, UIDocumentPickerDelegate {
             return
         }
 
-        let fileUrl = directory.appendingPathComponent(params.fileName!, isDirectory: false)
+        let fileUrl = directory!.appendingPathComponent(params.fileName!, isDirectory: false)
 
         if FileManager.default.fileExists(atPath: fileUrl.path) {
             if !params.replace {
@@ -55,8 +73,7 @@ class SaveFileDialog: NSObject, UIDocumentPickerDelegate {
 
             do {
                 try FileManager.default.removeItem(at: fileUrl)
-            } catch {
-                writeLog("unable to remove exists file: \(error.localizedDescription)")
+            } catch let error {
                 result(FlutterError(code: "file_remove_failed",
                                     message: error.localizedDescription,
                                     details: nil)
@@ -66,9 +83,11 @@ class SaveFileDialog: NSObject, UIDocumentPickerDelegate {
         }
 
         let fileContents = Data(bytes: params.data!, count: params.data!.count)
-        if !FileManager.default.createFile(atPath: fileUrl.path, contents: fileContents) {
+        do {
+            try fileContents.write(to: fileUrl)
+        } catch {
             result(FlutterError(code: "file_create_failed",
-                                message: "File create failed: '\(fileUrl.absoluteString)'",
+                                message: error.localizedDescription,
                                 details: nil)
             )
             return
