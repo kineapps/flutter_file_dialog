@@ -27,6 +27,9 @@ public class SwiftFlutterFileDialogPlugin: NSObject, FlutterPlugin {
             openFileDialog = OpenFileDialog()
             openFileDialog!.pickDirectory(result: result)
             return
+        } else if (call.method == "isSupportPickDirectory") {
+            OpenFileDialog.isSupportPickDirectory(result: result)
+            return
         }
 
         guard let args = call.arguments as? [String: Any] else {

@@ -57,7 +57,16 @@ class OpenFileDialog: NSObject, UIDocumentPickerDelegate, UIImagePickerControlle
             viewController.present(documentPickerViewController, animated: true, completion: nil)
         }
     }
-    
+
+    class func isSupportPickDirectory(result: @escaping FlutterResult) {
+        if #available(iOS 13, *) {
+            result(true)
+            return
+        }
+
+        result(false)
+    }
+
     func pickDirectory(result: @escaping FlutterResult) {
         flutterResult = result
         isPickDirectory = true

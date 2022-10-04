@@ -64,6 +64,10 @@ class FileDialog(
         Log.d(LOG_TAG, "pickDirectory - OUT")
     }
 
+    fun isSupportPickDirectory(result: MethodChannel.Result) {
+        result.success(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+    }
+
     fun pickFile(result: MethodChannel.Result,
                  fileExtensionsFilter: Array<String>?,
                  mimeTypesFilter: Array<String>?,
