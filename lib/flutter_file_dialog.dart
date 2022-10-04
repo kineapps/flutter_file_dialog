@@ -22,8 +22,8 @@ class FlutterFileDialog {
 
   /// Displays a dialog for picking a directory.
   /// Availabe on Android 21/iOS 13 and above. Use [isSupportPickDirectory] to
-  /// check whether the current platform is support [pickDirectory] or not if
-  /// you are targeting older version of Android/iOS.
+  /// check whether the current platform supports [pickDirectory] or not if
+  /// you are targeting an older version of Android/iOS.
   ///
   /// Returns the path of the picked directory or null if operation was cancelled.
   /// Throws exception on error.
