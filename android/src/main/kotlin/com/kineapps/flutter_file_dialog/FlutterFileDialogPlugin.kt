@@ -5,7 +5,11 @@
 
 package com.kineapps.flutter_file_dialog
 
+import android.app.Activity
+import android.net.Uri
+import android.os.Build
 import android.util.Log
+import androidx.documentfile.provider.DocumentFile
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -119,6 +123,15 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
             }
         }
         when (call.method) {
+            "pickDirectory" -> fileDialog!!.pickDirectory(result)
+            "isPickDirectorySupported" -> fileDialog!!.isPickDirectorySupported(result)
+            "saveFileToDirectory" -> saveFileToDirectory(
+                    result,
+                    mimeType = call.argument("mimeType") as String?,
+                    fileName = call.argument("fileName") as String?,
+                    directory = call.argument("directory") as String?,
+                    data = call.argument("data") as ByteArray?,
+            )
             "pickFile" -> fileDialog!!.pickFile(
                     result,
                     fileExtensionsFilter = parseMethodCallArrayArgument(call, "fileExtensionsFilter"),
@@ -136,6 +149,69 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
             )
             else -> result.notImplemented()
         }
+    }
+
+    private fun saveFileToDirectory(
+            result: Result,
+            directory: String?,
+            mimeType: String?,
+            fileName: String?,
+            data: ByteArray?,
+    ) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            result.error(
+                    "minimum_target",
+                    "saveFileToDirectory() available only on Android 21 and above",
+                    ""
+            )
+            return
+        }
+
+        Log.d(LOG_TAG, "saveFileToDirectory - IN")
+
+        if (directory == null || directory.isEmpty()) {
+            result.error("invalid_arguments", "Missing 'directory'", null)
+            return
+        }
+
+        if (mimeType == null || mimeType.isEmpty()) {
+            result.error("invalid_arguments", "Missing 'mimeType'", null)
+            return
+        }
+
+        if (fileName == null || fileName.isEmpty()) {
+            result.error("invalid_arguments", "Missing 'fileName'", null)
+            return
+        }
+
+        if (data == null) {
+            result.error("invalid_arguments", "Missing 'data'", null)
+            return
+        }
+
+        if (activityBinding != null) {
+            val dirURI: Uri = Uri.parse(directory)
+            val activity = activityBinding!!.activity
+            val outputFolder: DocumentFile? = DocumentFile.fromTreeUri(activity, dirURI)
+            val newFile = outputFolder!!.createFile(mimeType, fileName);
+            writeFile(activity, data, newFile!!.uri)
+            result.success(newFile.uri.path)
+        }
+
+        Log.d(LOG_TAG, "saveFileToDirectory - OUT")
+    }
+
+    private fun writeFile(
+            activity: Activity,
+            data: ByteArray,
+            destinationFileUri: Uri
+    ) {
+        activity.contentResolver.openOutputStream(destinationFileUri).use { outputStream ->
+            outputStream as java.io.FileOutputStream
+            outputStream.channel.truncate(0)
+            outputStream.write(data)
+        }
+        Log.d(LOG_TAG, "Saved file to '${destinationFileUri.path}'")
     }
 
     private fun createFileDialog(): Boolean {
