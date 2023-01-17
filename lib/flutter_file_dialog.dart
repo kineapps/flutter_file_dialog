@@ -20,7 +20,7 @@ class FlutterFileDialog {
   }
 
   /// Displays a dialog for picking a directory.
-  /// Availabe on Android 21/iOS 13 and above. Use [isSupportPickDirectory] to
+  /// Availabe on Android 21/iOS 13 and above. Use [isPickDirectorySupported] to
   /// check whether the current platform supports [pickDirectory] or not if
   /// you are targeting an older version of Android/iOS.
   ///
@@ -32,8 +32,8 @@ class FlutterFileDialog {
     return DirectoryLocation._(uriString);
   }
 
-  static Future<bool> isSupportPickDirectory() async {
-    return (await _channel.invokeMethod<bool>('isSupportPickDirectory'))!;
+  static Future<bool> isPickDirectorySupported() async {
+    return (await _channel.invokeMethod<bool>('isPickDirectorySupported'))!;
   }
 
   /// Displays a dialog for selecting a location where to save the file and

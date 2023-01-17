@@ -33,7 +33,7 @@ class _MyAppState extends State<MyApp> {
   String? _pickedFilePath;
 
   DirectoryLocation? _pickedDirecotry;
-  Future<bool> _isSupportPickDirectory = FlutterFileDialog.isSupportPickDirectory();
+  Future<bool> _isPickDirectorySupported = FlutterFileDialog.isPickDirectorySupported();
 
   @override
   void initState() {
@@ -101,7 +101,7 @@ class _MyAppState extends State<MyApp> {
                 ),
               ),
               FutureBuilder<bool>(
-                future: _isSupportPickDirectory,
+                future: _isPickDirectorySupported,
                 builder: (context, snapshot) {
                   if (!snapshot.hasData || !snapshot.data!) return Container();
                   return Padding(
