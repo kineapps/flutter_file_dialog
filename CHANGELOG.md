@@ -1,3 +1,8 @@
+## 3.0.0
+
+- Allow picking a directory and saving files to the picked directory without further dialogs. Thanks to @[Doflatango](https://github.com/Doflatango)!
+- minimum iOS version is now 11
+
 ## 2.3.2
 
 - [Android] Fixed #28: Extra content being saved to end of file sometimes. Thanks to @[hygehyge](https://github.com/hygehyge)!
