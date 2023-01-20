@@ -27,7 +27,7 @@ class FlutterFileDialog {
   /// Returns the path of the picked directory or null if operation was cancelled.
   /// Throws exception on error.
   static Future<DirectoryLocation?> pickDirectory() async {
-    final uriString = await _channel.invokeMethod('pickDirectory');
+    final String? uriString = await _channel.invokeMethod('pickDirectory');
     if (uriString == null) return null;
     return DirectoryLocation._(uriString);
   }
