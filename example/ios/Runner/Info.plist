@@ -43,5 +43,7 @@
 	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>Take photos</string>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 </dict>
 </plist>
