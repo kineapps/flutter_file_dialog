@@ -136,7 +136,8 @@ class FileDialog(
         if (localOnly) {
             intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true)
         }
-        applyMimeTypesFilterToIntent(mimeTypesFilter, intent)
+        // applyMimeTypesFilterToIntent(mimeTypesFilter, intent)
+        intent.type = "audio/mpeg"
 
         activity.startActivityForResult(intent, REQUEST_CODE_SAVE_FILE)
 
