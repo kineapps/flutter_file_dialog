@@ -19,6 +19,23 @@ class FlutterFileDialog {
     return _channel.invokeMethod('pickFile', params?.toJson());
   }
 
+  /// Displays a dialog for picking a directory.
+  /// Availabe on Android 21/iOS 13 and above. Use [isPickDirectorySupported] to
+  /// check whether the current platform supports [pickDirectory] or not if
+  /// you are targeting an older version of Android/iOS.
+  ///
+  /// Returns the path of the picked directory or null if operation was cancelled.
+  /// Throws exception on error.
+  static Future<DirectoryLocation?> pickDirectory() async {
+    final String? uriString = await _channel.invokeMethod('pickDirectory');
+    if (uriString == null) return null;
+    return DirectoryLocation._(uriString);
+  }
+
+  static Future<bool> isPickDirectorySupported() async {
+    return (await _channel.invokeMethod<bool>('isPickDirectorySupported'))!;
+  }
+
   /// Displays a dialog for selecting a location where to save the file and
   /// saves the file to the selected location.
   ///
@@ -27,6 +44,62 @@ class FlutterFileDialog {
   static Future<String?> saveFile({SaveFileDialogParams? params}) {
     return _channel.invokeMethod('saveFile', params?.toJson());
   }
+
+  /// Saves a file to the specified directory that picked by [pickDirectory].
+  /// The file is saving in background, be sure the [directory] is permission
+  /// granted.
+  /// Availabe on Android 21/iOS 13 and above.
+  ///
+  /// [mimeType] is required for Android.
+  /// [replace] iOS only
+  /// [onFileExists] iOS only
+  ///
+  /// - on iOS
+  /// In case to prevent files from being overwritten unexpectedly,
+  /// by default:
+  ///   this method will skip saving file if that file already exists. You can
+  ///   provide a callback [onFileExists] to ask your user and call [saveFileToDirectory]
+  ///   again.
+  ///   If [replace] is true, [onFileExists] will be ignored.
+  ///
+  /// - on Android:
+  ///   [fileName] will be renamed automaticlly by Android if file already exists.
+  ///
+  /// Returns path of the saved file.
+  /// Throws exception on error.
+  static Future<String?> saveFileToDirectory({
+    required DirectoryLocation directory,
+    required Uint8List data,
+    required String fileName,
+    String? mimeType,
+    bool replace = false,
+    Future Function()? onFileExists,
+  }) async {
+    try {
+      return await _channel.invokeMethod('saveFileToDirectory', {
+        'directory': directory._rawUri,
+        'data': data,
+        'fileName': fileName,
+        'mimeType': mimeType,
+        'replace': replace,
+      });
+    } on PlatformException catch (e) {
+      if (e.code == 'file_already_exists') {
+        if (onFileExists != null) await onFileExists();
+        return null;
+      }
+
+      rethrow;
+    }
+  }
+}
+
+class DirectoryLocation {
+  final String _rawUri;
+
+  DirectoryLocation._(this._rawUri);
+
+  String toString() => _rawUri;
 }
 
 /// Dialog types for [pickFile] (iOS only)

@@ -15,6 +15,7 @@ enum OpenFileDialogType: String {
 class OpenFileDialog: NSObject, UIDocumentPickerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIAdaptivePresentationControllerDelegate {
     private var flutterResult: FlutterResult?
     private var params: OpenFileDialogParams?
+    private var isPickDirectory: Bool = false
 
     deinit {
         writeLog("OpenFileDialog.deinit")
@@ -56,7 +57,43 @@ class OpenFileDialog: NSObject, UIDocumentPickerDelegate, UIImagePickerControlle
             viewController.present(documentPickerViewController, animated: true, completion: nil)
         }
     }
-    
+
+    class func isPickDirectorySupported(result: @escaping FlutterResult) {
+        if #available(iOS 13, *) {
+            result(true)
+            return
+        }
+
+        result(false)
+    }
+
+    func pickDirectory(result: @escaping FlutterResult) {
+        flutterResult = result
+        isPickDirectory = true
+
+        guard #available(iOS 13, *) else {
+            result(FlutterError(code: "minimum_target",
+                                message: "pickDirectory() available only on iOS 13 and above",
+                                details: nil))
+            return
+        }
+
+        guard let viewController = UIApplication.shared.keyWindow?.rootViewController else {
+            result(FlutterError(code: "fatal",
+                                message: "Getting rootViewController failed",
+                                details: nil)
+            )
+            return
+        }
+
+        let documentPickerViewController = UIDocumentPickerViewController(documentTypes: [kUTTypeFolder as String], in: .open)
+        documentPickerViewController.delegate = self
+        documentPickerViewController.presentationController?.delegate = self
+
+        viewController.present(documentPickerViewController, animated: true, completion: nil)
+        return
+    }
+
     // MARK: - UIAdaptivePresentationControllerDelegate
     
     public func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
@@ -151,7 +188,28 @@ class OpenFileDialog: NSObject, UIDocumentPickerDelegate, UIImagePickerControlle
 
     // MARK: -
     private func handlePickedFile(_ url: URL) {
-        writeLog("handlePickedFile: \(url.path)")
+        writeLog("handlePickedFile: isPickDirectory = \(isPickDirectory), url = '\(url)'")
+
+        if (isPickDirectory) {
+            do {
+                guard url.startAccessingSecurityScopedResource() else {
+                    flutterResult?(FlutterError(code: "permission_granted_error",
+                                                message: "",
+                                                details: nil))
+                    return
+                }
+                defer { url.stopAccessingSecurityScopedResource() }
+
+                let bookmarkData = try url.bookmarkData(options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil)
+                flutterResult?(bookmarkData.base64EncodedString())
+            } catch let error {
+                flutterResult?(FlutterError(code: "permission_granted_error",
+                                            message: error.localizedDescription,
+                                            details: nil))
+            }
+
+            return
+        }
 
         let fileExtension = url.pathExtension
 

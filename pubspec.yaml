@@ -1,6 +1,6 @@
 name: flutter_file_dialog
 description: Dialogs for picking and saving files in Android and in iOS.
-version: 2.3.2
+version: 3.0.0
 homepage: https://github.com/kineapps/flutter_file_dialog
 repository: https://github.com/kineapps/flutter_file_dialog
 
