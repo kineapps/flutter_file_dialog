@@ -1,3 +1,7 @@
+## 3.0.2
+
+- Fix AGP 8.0 compile error. Thanks to @FauconSpartiate(https://github.com/FauconSpartiate)!
+
 ## 3.0.1
 
 - Adds a namespace for compatibility with AGP 8.0. Thanks to @[asaarnak](https://github.com/asaarnak)!
