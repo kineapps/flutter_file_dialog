@@ -62,12 +62,21 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
 
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
         Log.d(LOG_TAG, "onReattachedToActivityForConfigChanges")
-        doOnAttachedToActivity(binding)
+
+        if (fileDialog != null) {
+            this.activityBinding = binding
+            fileDialog!!.setActivity(binding.activity)
+        } else {
+            doOnAttachedToActivity(binding)
+        }
     }
 
     override fun onDetachedFromActivityForConfigChanges() {
         Log.d(LOG_TAG, "onDetachedFromActivityForConfigChanges")
-        doOnDetachedFromActivity()
+        this.activityBinding = null
+        if (fileDialog != null) {
+            fileDialog!!.setActivity(null)
+        }
     }
 
     private fun doOnAttachedToEngine(messenger: BinaryMessenger) {
@@ -97,6 +106,11 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
         Log.d(LOG_TAG, "doOnAttachedToActivity - IN")
 
         this.activityBinding = activityBinding
+        if (activityBinding != null) {
+            createFileDialog(activityBinding)
+        } else {
+            this.fileDialog = null
+        }
 
         Log.d(LOG_TAG, "doOnAttachedToActivity - OUT")
     }
@@ -116,11 +130,9 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
 
     override fun onMethodCall(call: MethodCall, result: Result) {
         Log.d(LOG_TAG, "onMethodCall - IN , method=${call.method}")
-        if (fileDialog == null) {
-            if (!createFileDialog()) {
-                result.error("init_failed", "Not attached", null)
-                return
-            }
+        if (activityBinding == null) {
+            result.error("init_failed", "Not attached to activity", null)
+            return
         }
         when (call.method) {
             "pickDirectory" -> fileDialog!!.pickDirectory(result)
@@ -169,17 +181,17 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
 
         Log.d(LOG_TAG, "saveFileToDirectory - IN")
 
-        if (directory == null || directory.isEmpty()) {
+        if (directory.isNullOrEmpty()) {
             result.error("invalid_arguments", "Missing 'directory'", null)
             return
         }
 
-        if (mimeType == null || mimeType.isEmpty()) {
+        if (mimeType.isNullOrEmpty()) {
             result.error("invalid_arguments", "Missing 'mimeType'", null)
             return
         }
 
-        if (fileName == null || fileName.isEmpty()) {
+        if (fileName.isNullOrEmpty()) {
             result.error("invalid_arguments", "Missing 'fileName'", null)
             return
         }
@@ -214,21 +226,14 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
         Log.d(LOG_TAG, "Saved file to '${destinationFileUri.path}'")
     }
 
-    private fun createFileDialog(): Boolean {
+    private fun createFileDialog(activityBinding: ActivityPluginBinding) {
         Log.d(LOG_TAG, "createFileDialog - IN")
 
-        var fileDialog: FileDialog? = null
-        if (activityBinding != null) {
-            fileDialog = FileDialog(
-                    activity = activityBinding!!.activity
-            )
-            activityBinding!!.addActivityResultListener(fileDialog)
-        }
+        val fileDialog = FileDialog(activity = activityBinding.activity)
+        activityBinding.addActivityResultListener(fileDialog)
         this.fileDialog = fileDialog
 
         Log.d(LOG_TAG, "createFileDialog - OUT")
-
-        return fileDialog != null
     }
 
     private fun parseMethodCallArrayArgument(call: MethodCall, arg: String): Array<String>? {
