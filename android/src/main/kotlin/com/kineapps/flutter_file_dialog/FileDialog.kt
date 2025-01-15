@@ -104,12 +104,13 @@ class FileDialog(
         this.fileExtensionsFilter = fileExtensionsFilter
         this.copyPickedFileToCacheDir = copyFileToCacheDir
 
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
-        intent.addCategory(Intent.CATEGORY_OPENABLE)
-        if (localOnly) {
-            intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true)
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            if (localOnly) {
+                putExtra(Intent.EXTRA_LOCAL_ONLY, true)
+            }
+            applyMimeTypesFilterToIntent(mimeTypesFilter, this)
         }
-        applyMimeTypesFilterToIntent(mimeTypesFilter, intent)
 
         activity?.startActivityForResult(intent, REQUEST_CODE_PICK_FILE)
 
@@ -276,12 +277,11 @@ class FileDialog(
             sourceFileUri: Uri,
             destinationFileName: String): String {
         // get destination file on cache dir
-        val destinationFile = File(context.cacheDir.path, destinationFileName)
-
-        // delete existing destination file
-        if (destinationFile.exists()) {
-            Log.d(LOG_TAG, "Deleting existing destination file '${destinationFile.path}'")
-            destinationFile.delete()
+        val destinationFile = File(context.cacheDir.path, destinationFileName).apply {
+            if (exists()) {
+                Log.d(LOG_TAG, "Deleting existing destination file '$path'")
+                delete()
+            }
         }
 
         // copy file to cache dir
@@ -371,7 +371,7 @@ class FileDialog(
             activity?.contentResolver?.openOutputStream(destinationFileUri).use { outputStream ->
                 outputStream as java.io.FileOutputStream
                 outputStream.channel.truncate(0)
-                inputStream.copyTo(outputStream!!)
+                inputStream.copyTo(outputStream)
             }
         }
         Log.d(LOG_TAG, "Saved file to '${destinationFileUri.path}'")
@@ -393,16 +393,20 @@ class FileDialog(
     }
 
     private fun finishWithAlreadyActiveError(result: MethodChannel.Result) {
-        result.error("already_active", "File dialog is already active", null)
+        Log.w(LOG_TAG, "File dialog is already active")
     }
 
     private fun finishSuccessfully(filePath: String?) {
-        pendingResult?.success(filePath)
-        clearPendingResult()
+        pendingResult?.let { result ->
+            clearPendingResult()
+            result.success(filePath)
+        }
     }
 
     private fun finishWithError(errorCode: String, errorMessage: String?, errorDetails: String?) {
-        pendingResult?.error(errorCode, errorMessage, errorDetails)
-        clearPendingResult()
+        pendingResult?.let { result ->
+            clearPendingResult()
+            result.error(errorCode, errorMessage, errorDetails)
+        }
     }
 }

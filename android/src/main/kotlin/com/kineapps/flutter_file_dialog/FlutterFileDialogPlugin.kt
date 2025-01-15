@@ -38,8 +38,7 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
 
         pluginBinding = binding
 
-        val messenger = pluginBinding?.binaryMessenger
-        doOnAttachedToEngine(messenger!!)
+        pluginBinding?.binaryMessenger?.let { doOnAttachedToEngine(it) }
 
         Log.d(LOG_TAG, "onAttachedToEngine - OUT")
     }
@@ -82,8 +81,9 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
     private fun doOnAttachedToEngine(messenger: BinaryMessenger) {
         Log.d(LOG_TAG, "doOnAttachedToEngine - IN")
 
-        methodChannel = MethodChannel(messenger, "flutter_file_dialog")
-        methodChannel?.setMethodCallHandler(this)
+        methodChannel = MethodChannel(messenger, "flutter_file_dialog").apply {
+            setMethodCallHandler(this@FlutterFileDialogPlugin)
+        }
 
         Log.d(LOG_TAG, "doOnAttachedToEngine - OUT")
     }
@@ -106,11 +106,7 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
         Log.d(LOG_TAG, "doOnAttachedToActivity - IN")
 
         this.activityBinding = activityBinding
-        if (activityBinding != null) {
-            createFileDialog(activityBinding)
-        } else {
-            this.fileDialog = null
-        }
+        activityBinding?.let { createFileDialog(it) } ?: run { this.fileDialog = null }
 
         Log.d(LOG_TAG, "doOnAttachedToActivity - OUT")
     }
@@ -201,13 +197,12 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
             return
         }
 
-        if (activityBinding != null) {
+        activityBinding?.activity?.let { activity ->
             val dirURI: Uri = Uri.parse(directory)
-            val activity = activityBinding!!.activity
             val outputFolder: DocumentFile? = DocumentFile.fromTreeUri(activity, dirURI)
-            val newFile = outputFolder!!.createFile(mimeType, fileName);
-            writeFile(activity, data, newFile!!.uri)
-            result.success(newFile.uri.path)
+            val newFile = outputFolder?.createFile(mimeType, fileName)
+            newFile?.uri?.let { writeFile(activity, data, it) }
+            result.success(newFile?.uri?.path)
         }
 
         Log.d(LOG_TAG, "saveFileToDirectory - OUT")
