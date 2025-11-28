@@ -1,3 +1,8 @@
+## 3.0.3
+
+- [Android] Updated compileSdkVersion to 36, Gradle to 8.14 and Java/Kotlin compatibility to version 17
+- [Android] Additional fix for #31: java.lang.IllegalStateException Reply already submitted
+
 ## 3.0.2
 
 - Fix AGP 8.0 compile error. Thanks to @FauconSpartiate(https://github.com/FauconSpartiate)!
