@@ -32,7 +32,7 @@ class _MyAppState extends State<MyApp> {
   bool _copyFileToCacheDir = true;
   String? _pickedFilePath;
 
-  DirectoryLocation? _pickedDirecotry;
+  DirectoryLocation? _pickedDirectory;
   Future<bool> _isPickDirectorySupported =
       FlutterFileDialog.isPickDirectorySupported();
 
@@ -113,12 +113,12 @@ class _MyAppState extends State<MyApp> {
                 );
               },
             ),
-            if (_pickedDirecotry != null)
+            if (_pickedDirectory != null)
               Padding(
                 padding: const EdgeInsets.only(top: 24),
-                child: Text(_pickedDirecotry!.toString()),
+                child: Text(_pickedDirectory!.toString()),
               ),
-            if (_pickedDirecotry != null && _currentFile != null)
+            if (_pickedDirectory != null && _currentFile != null)
               Padding(
                 padding: const EdgeInsets.only(top: 24),
                 child: ElevatedButton(
@@ -200,7 +200,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _pickDirectory() async {
-    _pickedDirecotry = (await FlutterFileDialog.pickDirectory());
+    _pickedDirectory = await FlutterFileDialog.pickDirectory();
     setState(() {});
   }
 
@@ -212,8 +212,8 @@ class _MyAppState extends State<MyApp> {
     final mimeType = 'image/$ext';
     final newFileName = 'abc123.$ext';
 
-    FlutterFileDialog.saveFileToDirectory(
-      directory: _pickedDirecotry!,
+    await FlutterFileDialog.saveFileToDirectory(
+      directory: _pickedDirectory!,
       data: fileData,
       mimeType: mimeType,
       fileName: newFileName,
@@ -231,10 +231,10 @@ class _MyAppState extends State<MyApp> {
                 ),
                 SimpleDialogOption(
                   child: const Text('Replace'),
-                  onPressed: () {
+                  onPressed: () async {
                     Navigator.pop(context);
-                    FlutterFileDialog.saveFileToDirectory(
-                      directory: _pickedDirecotry!,
+                    await FlutterFileDialog.saveFileToDirectory(
+                      directory: _pickedDirectory!,
                       data: fileData,
                       mimeType: mimeType,
                       fileName: newFileName,
