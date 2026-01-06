@@ -41,6 +41,9 @@ class FileDialog(
     private var sourceFile: File? = null
     private var isSourceFileTemp: Boolean = false
 
+    // lock for thread-safe access to pendingResult
+    private val resultLock = Any()
+
     fun setActivity(activity: Activity?) {
         this.activity = activity
     }
@@ -378,18 +381,14 @@ class FileDialog(
         return destinationFileUri.path!!
     }
 
-    private fun setPendingResult(
-        result: MethodChannel.Result
-    ): Boolean {
-        if (pendingResult != null) {
-            return false
+    private fun setPendingResult(result: MethodChannel.Result): Boolean {
+        synchronized(resultLock) {
+            if (pendingResult != null) {
+                return false
+            }
+            pendingResult = result
+            return true
         }
-        pendingResult = result
-        return true
-    }
-
-    private fun clearPendingResult() {
-        pendingResult = null
     }
 
     private fun finishWithAlreadyActiveError(result: MethodChannel.Result) {
@@ -397,16 +396,20 @@ class FileDialog(
     }
 
     private fun finishSuccessfully(filePath: String?) {
-        pendingResult?.let { result ->
-            clearPendingResult()
-            result.success(filePath)
+        val result: MethodChannel.Result?
+        synchronized(resultLock) {
+            result = pendingResult
+            pendingResult = null
         }
+        result?.success(filePath)
     }
 
     private fun finishWithError(errorCode: String, errorMessage: String?, errorDetails: String?) {
-        pendingResult?.let { result ->
-            clearPendingResult()
-            result.error(errorCode, errorMessage, errorDetails)
+        val result: MethodChannel.Result?
+        synchronized(resultLock) {
+            result = pendingResult
+            pendingResult = null
         }
+        result?.error(errorCode, errorMessage, errorDetails)
     }
 }
