@@ -6,15 +6,15 @@
 import Flutter
 import UIKit
 
-public class SwiftFlutterFileDialogPlugin: NSObject, FlutterPlugin {
+public class FlutterFileDialogPlugin: NSObject, FlutterPlugin {
     public static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(name: "flutter_file_dialog", binaryMessenger: registrar.messenger())
-        let instance = SwiftFlutterFileDialogPlugin()
+        let instance = FlutterFileDialogPlugin()
         registrar.addMethodCallDelegate(instance, channel: channel)
     }
 
     deinit {
-        writeLog("SwiftFlutterFileDialogPlugin.deinit")
+        writeLog("FlutterFileDialogPlugin.deinit")
     }
 
     var openFileDialog: OpenFileDialog?
@@ -82,7 +82,7 @@ struct OpenFileDialogParams {
         default:
             sourceType = .photoLibrary
         }
-        
+
         allowEditing = data["allowEditing"] as? Bool ?? false
 
         allowedUtiTypes = data["allowedUtiTypes"] as? [String]

@@ -1,3 +1,7 @@
+## 3.1.0
+
+- [iOS] Added Swift Package Manager (SPM) support alongside existing CocoaPods support
+
 ## 3.0.3
 
 - [Android] Updated compileSdkVersion to 36, Gradle to 8.14 and Java/Kotlin compatibility to version 17
