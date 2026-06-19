@@ -99,6 +99,7 @@ class DirectoryLocation {
 
   DirectoryLocation._(this._rawUri);
 
+  @override
   String toString() => _rawUri;
 }
 

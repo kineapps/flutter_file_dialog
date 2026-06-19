@@ -3,6 +3,8 @@
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
 
+// ignore_for_file: avoid_print
+
 import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
@@ -12,13 +14,15 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 
-void main() => runApp(MaterialApp(
+void main() => runApp(const MaterialApp(
       home: MyApp(),
     ));
 
 class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
   @override
-  _MyAppState createState() => _MyAppState();
+  State<MyApp> createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> {
@@ -33,7 +37,7 @@ class _MyAppState extends State<MyApp> {
   String? _pickedFilePath;
 
   DirectoryLocation? _pickedDirectory;
-  Future<bool> _isPickDirectorySupported =
+  final Future<bool> _isPickDirectorySupported =
       FlutterFileDialog.isPickDirectorySupported();
 
   @override
