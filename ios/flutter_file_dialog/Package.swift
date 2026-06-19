@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "flutter_file_dialog",
     platforms: [
-        .iOS(.v12)
+        .iOS(.v13)
     ],
     products: [
         .library(name: "flutter-file-dialog", targets: ["flutter_file_dialog"])

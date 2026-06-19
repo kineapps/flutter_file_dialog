@@ -1,3 +1,9 @@
+## 3.3.0
+
+- [iOS] Raised declared deployment target to 13.0 to match the minimum already required by Flutter 3.44+
+- [Android] Bumped Kotlin to 2.3.20, raised minSdk to 24, and modernized the `lint`/test configuration
+- [Example] Migrated the iOS example to Swift Package Manager and the UIScene lifecycle; migrated the Android example to Kotlin DSL + AGP 9 / built-in Kotlin
+
 ## 3.2.0
 
 - [iOS] Added Swift Package Manager (SPM) support alongside existing CocoaPods support. Thanks to [@cjouannet](https://github.com/cjouannet)!
