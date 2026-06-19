@@ -111,8 +111,6 @@ String? _openFileDialogTypeToString(OpenFileDialogType dialogType) {
       return 'document';
     case OpenFileDialogType.image:
       return 'image';
-    default:
-      return null;
   }
 }
 
@@ -127,8 +125,6 @@ String? _sourceTypeToString(SourceType sourceType) {
       return 'photoLibrary';
     case SourceType.savedPhotosAlbum:
       return 'savedPhotosAlbum';
-    default:
-      return null;
   }
 }
 
@@ -224,12 +220,18 @@ class SaveFileDialogParams {
     this.fileName,
     this.mimeTypesFilter,
     this.localOnly = false,
-  })  : assert(sourceFilePath == null || data == null,
-            'sourceFilePath or data should be null'),
-        assert(sourceFilePath != null || data != null,
-            'Missing sourceFilePath or data'),
-        assert(data == null || (fileName != null && fileName != ''),
-            'Missing fileName');
+  }) : assert(
+         sourceFilePath == null || data == null,
+         'sourceFilePath or data should be null',
+       ),
+       assert(
+         sourceFilePath != null || data != null,
+         'Missing sourceFilePath or data',
+       ),
+       assert(
+         data == null || (fileName != null && fileName != ''),
+         'Missing fileName',
+       );
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
