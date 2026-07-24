@@ -213,6 +213,48 @@ class FileDialogTest {
     }
 
     @Test
+    fun `saveFile - should reply invalid_arguments when fileName and data are missing`() {
+        // GIVEN
+        val dialog = newDialog()
+        val result = FakeMethodChannelResult()
+
+        // WHEN
+        dialog.saveFile(
+                result = result,
+                sourceFilePath = null,
+                data = null,
+                fileName = null,
+                mimeTypesFilter = null,
+                localOnly = false)
+
+        // THEN the call fails and the pending-dialog slot stays free
+        assertEquals(1, result.errorCount)
+        assertEquals("invalid_arguments", result.lastErrorCode)
+        assertEquals(0, startSaveFile(dialog).completionCount)
+    }
+
+    @Test
+    fun `saveFile - should release the pending slot when temp file creation fails`() {
+        // GIVEN a fileName too short for File.createTempFile (throws)
+        val dialog = newDialog()
+        val result = FakeMethodChannelResult()
+
+        // WHEN
+        dialog.saveFile(
+                result = result,
+                sourceFilePath = null,
+                data = byteArrayOf(1),
+                fileName = "ab",
+                mimeTypesFilter = null,
+                localOnly = false)
+
+        // THEN the call fails and a new dialog can be started (no already_active)
+        assertEquals(1, result.errorCount)
+        assertEquals("save_file_failed", result.lastErrorCode)
+        assertEquals(0, startSaveFile(dialog).completionCount)
+    }
+
+    @Test
     fun `saveFile - should reply internal_error when no activity is available`() {
         // GIVEN
         val dialog = FileDialog(null)

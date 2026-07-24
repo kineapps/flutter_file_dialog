@@ -165,6 +165,14 @@ class FileDialog(
             return
         }
 
+        if (sourceFilePath == null && (fileName == null || data == null)) {
+            result.error(
+                "invalid_arguments",
+                "Missing 'fileName' or 'data'",
+                null)
+            return
+        }
+
         val requestCode = setPendingDialog(DialogOperation.SAVE_FILE, result)
         if (requestCode == null) {
             finishWithAlreadyActiveError(result)
@@ -183,10 +191,17 @@ class FileDialog(
                 return
             }
         } else {
-            // write data to a temporary file
+            // write data to a temporary file; on failure release the
+            // pending-dialog slot so later calls do not get already_active
             isSourceFileTemp = true
-            sourceFile = File.createTempFile(fileName!!, "")
-            sourceFile!!.writeBytes(data!!)
+            try {
+                sourceFile = File.createTempFile(fileName!!, "")
+                sourceFile!!.writeBytes(data!!)
+            } catch (e: Exception) {
+                Log.e(LOG_TAG, "saveFile - creating temporary file failed", e)
+                finishWithError("save_file_failed", e.localizedMessage, e.toString())
+                return
+            }
         }
 
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
