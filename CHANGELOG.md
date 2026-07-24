@@ -1,3 +1,7 @@
+## 3.3.2
+
+- [Android] Fix fatal "Reply already submitted" crash (#58): complete every dialog result exactly once, reply with an "already_active" error when a dialog is already open instead of leaving the call unanswered, stop stale activity-result listeners from processing dialog results after plugin re-attachment, and stop a slow post-dialog file copy from blocking subsequent dialogs
+
 ## 3.3.1
 
 - [Android] Fix "Could not find method kotlin()" build failure on AGP 9 when built-in Kotlin is disabled (the Flutter template default) — only configure the kotlin {} DSL when the Kotlin Gradle Plugin is applied, and apply KGP when built-in Kotlin is off

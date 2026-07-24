@@ -19,12 +19,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
 
 private const val LOG_TAG = "FileDialog"
 
-private const val REQUEST_CODE_PICK_DIR = 19110
-private const val REQUEST_CODE_PICK_FILE = 19111
-private const val REQUEST_CODE_SAVE_FILE = 19112
+// request codes are allocated per dialog launch (see nextRequestCode) so a
+// stale or re-delivered activity result from an earlier launch cannot be
+// matched to a newer launch's pending result (codes wrap only after
+// REQUEST_CODE_RANGE launches, and must stay below the 0xFFFF Android limit)
+private const val REQUEST_CODE_BASE = 19110
+private const val REQUEST_CODE_RANGE = 40000
 
 // https://developer.android.com/guide/topics/providers/document-provider
 // https://developer.android.com/reference/android/content/Intent.html#ACTION_CREATE_DOCUMENT
@@ -33,7 +38,26 @@ class FileDialog(
         private var activity: Activity?
 ) : PluginRegistry.ActivityResultListener {
 
-    private var pendingResult: MethodChannel.Result? = null
+    companion object {
+        private val requestCodeCounter = AtomicInteger(0)
+
+        private fun nextRequestCode(): Int =
+                REQUEST_CODE_BASE + Math.floorMod(requestCodeCounter.getAndIncrement(), REQUEST_CODE_RANGE)
+    }
+
+    private enum class DialogOperation { PICK_DIRECTORY, PICK_FILE, SAVE_FILE }
+
+    private class PendingDialog(
+            val operation: DialogOperation,
+            val result: MethodChannel.Result,
+            val requestCode: Int
+    )
+
+    private var pendingDialog: PendingDialog? = null
+
+    // request code of the currently pending dialog launch, -1 if none
+    internal val pendingRequestCode: Int
+        get() = synchronized(resultLock) { pendingDialog?.requestCode ?: -1 }
     private var fileExtensionsFilter: Array<String>? = null
     private var copyPickedFileToCacheDir: Boolean = true
 
@@ -50,7 +74,7 @@ class FileDialog(
 
     fun pickDirectory(result: MethodChannel.Result) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            finishWithError(
+            result.error(
                     "minimum_target",
                     "pickDirectory() available only on Android 21 and above",
                     ""
@@ -59,7 +83,7 @@ class FileDialog(
         }
 
         if (activity == null) {
-            finishWithError(
+            result.error(
                 "internal_error",
                 "No activity is available",
                 "")
@@ -68,13 +92,14 @@ class FileDialog(
 
         Log.d(LOG_TAG, "pickDirectory - IN")
 
-        if (!setPendingResult(result)) {
+        val requestCode = setPendingDialog(DialogOperation.PICK_DIRECTORY, result)
+        if (requestCode == null) {
             finishWithAlreadyActiveError(result)
             return
         }
 
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
-        activity?.startActivityForResult(intent, REQUEST_CODE_PICK_DIR)
+        activity?.startActivityForResult(intent, requestCode)
 
         Log.d(LOG_TAG, "pickDirectory - OUT")
     }
@@ -92,14 +117,15 @@ class FileDialog(
         Log.d(LOG_TAG, "pickFile - IN, fileExtensionsFilter=$fileExtensionsFilter, mimeTypesFilter=$mimeTypesFilter, localOnly=$localOnly, copyFileToCacheDir=$copyFileToCacheDir")
 
         if (activity == null) {
-            finishWithError(
+            result.error(
                 "internal_error",
                 "No activity is available",
                 "")
             return
         }
 
-        if (!setPendingResult(result)) {
+        val requestCode = setPendingDialog(DialogOperation.PICK_FILE, result)
+        if (requestCode == null) {
             finishWithAlreadyActiveError(result)
             return
         }
@@ -115,7 +141,7 @@ class FileDialog(
             applyMimeTypesFilterToIntent(mimeTypesFilter, this)
         }
 
-        activity?.startActivityForResult(intent, REQUEST_CODE_PICK_FILE)
+        activity?.startActivityForResult(intent, requestCode)
 
         Log.d(LOG_TAG, "pickFile - OUT")
     }
@@ -131,7 +157,24 @@ class FileDialog(
                 "data=${data?.size} bytes, fileName=$fileName, " +
                 "mimeTypesFilter=$mimeTypesFilter, localOnly=$localOnly")
 
-        if (!setPendingResult(result)) {
+        if (activity == null) {
+            result.error(
+                "internal_error",
+                "No activity is available",
+                "")
+            return
+        }
+
+        if (sourceFilePath == null && (fileName == null || data == null)) {
+            result.error(
+                "invalid_arguments",
+                "Missing 'fileName' or 'data'",
+                null)
+            return
+        }
+
+        val requestCode = setPendingDialog(DialogOperation.SAVE_FILE, result)
+        if (requestCode == null) {
             finishWithAlreadyActiveError(result)
             return
         }
@@ -148,10 +191,21 @@ class FileDialog(
                 return
             }
         } else {
-            // write data to a temporary file
+            // write data to a temporary file; on failure delete the partial
+            // file and release the pending-dialog slot so later calls do not
+            // get already_active
             isSourceFileTemp = true
-            sourceFile = File.createTempFile(fileName!!, "")
-            sourceFile!!.writeBytes(data!!)
+            var tempFile: File? = null
+            try {
+                tempFile = File.createTempFile(fileName!!, "")
+                tempFile.writeBytes(data!!)
+                sourceFile = tempFile
+            } catch (e: Exception) {
+                Log.e(LOG_TAG, "saveFile - creating temporary file failed", e)
+                tempFile?.delete()
+                finishWithError("save_file_failed", e.localizedMessage, e.toString())
+                return
+            }
         }
 
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
@@ -162,15 +216,7 @@ class FileDialog(
         }
         applyMimeTypesFilterToIntent(mimeTypesFilter, intent)
 
-        if (activity == null) {
-            finishWithError(
-                "internal_error",
-                "No activity is available",
-                "")
-            return
-        }
-
-        activity?.startActivityForResult(intent, REQUEST_CODE_SAVE_FILE)
+        activity?.startActivityForResult(intent, requestCode)
 
         Log.d(LOG_TAG, "saveFile - OUT")
     }
@@ -189,27 +235,42 @@ class FileDialog(
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
-        if (activity == null) {
-            finishWithError(
-                "internal_error",
-                "No activity is available",
-                "")
-            return true
+        // take ownership of the pending result here so a slow post-dialog step
+        // can never block or complete a later dialog's result; consume it only
+        // when the request code matches the pending launch, so a re-delivered
+        // result from an earlier launch can never complete a newer dialog's
+        // pending result
+        val pending: PendingDialog
+        synchronized(resultLock) {
+            val current = pendingDialog
+            if (current == null || current.requestCode != requestCode) {
+                return false
+            }
+            pendingDialog = null
+            pending = current
         }
-
-        when (requestCode) {
-            REQUEST_CODE_PICK_DIR -> {
+        val result = pending.result
+        when (pending.operation) {
+            DialogOperation.PICK_DIRECTORY -> {
                 if (resultCode == Activity.RESULT_OK && data?.data != null) {
                     val sourceFileUri = data.data
                     Log.d(LOG_TAG, "Picked directory: $sourceFileUri")
-                    finishSuccessfully(sourceFileUri!!.toString())
+                    result.success(sourceFileUri!!.toString())
                 } else {
                     Log.d(LOG_TAG, "Cancelled")
-                    finishSuccessfully(null)
+                    result.success(null)
                 }
                 return true
             }
-            REQUEST_CODE_PICK_FILE -> {
+            DialogOperation.PICK_FILE -> {
+                val activity = this.activity
+                if (activity == null) {
+                    result.error(
+                        "internal_error",
+                        "No activity is available",
+                        "")
+                    return true
+                }
                 if (resultCode == Activity.RESULT_OK && data?.data != null) {
                     val sourceFileUri = data.data
                     Log.d(LOG_TAG, "Picked file: $sourceFileUri")
@@ -217,60 +278,70 @@ class FileDialog(
                     if (destinationFileName != null && validateFileExtension(destinationFileName)) {
                         if (copyPickedFileToCacheDir) {
                             copyFileToCacheDirOnBackground(
-                                    context = activity!!,
+                                    context = activity,
                                     sourceFileUri = sourceFileUri!!,
-                                    destinationFileName = destinationFileName)
+                                    destinationFileName = destinationFileName,
+                                    result = result)
                         } else {
-                            finishSuccessfully(sourceFileUri!!.toString())
+                            result.success(sourceFileUri!!.toString())
                         }
                     } else {
-                        finishWithError(
+                        result.error(
                                 "invalid_file_extension",
                                 "Invalid file type was picked",
                                 getFileExtension(destinationFileName))
                     }
                 } else {
                     Log.d(LOG_TAG, "Cancelled")
-                    finishSuccessfully(null)
+                    result.success(null)
                 }
                 return true
             }
-            REQUEST_CODE_SAVE_FILE -> {
+            DialogOperation.SAVE_FILE -> {
+                if (activity == null) {
+                    if (isSourceFileTemp) {
+                        Log.d(LOG_TAG, "Deleting source file: ${sourceFile?.path}")
+                        sourceFile?.delete()
+                    }
+                    result.error(
+                        "internal_error",
+                        "No activity is available",
+                        "")
+                    return true
+                }
                 if (resultCode == Activity.RESULT_OK && data?.data != null) {
                     val destinationFileUri = data.data
-                    saveFileOnBackground(this.sourceFile!!, destinationFileUri!!)
+                    saveFileOnBackground(this.sourceFile!!, destinationFileUri!!, isSourceFileTemp, result)
                 } else {
                     Log.d(LOG_TAG, "Cancelled")
                     if (isSourceFileTemp) {
                         Log.d(LOG_TAG, "Deleting source file: ${sourceFile?.path}")
                         sourceFile?.delete()
                     }
-                    finishSuccessfully(null)
+                    result.success(null)
                 }
                 return true
             }
-            else -> return false
         }
     }
 
     private fun copyFileToCacheDirOnBackground(
             context: Context,
             sourceFileUri: Uri,
-            destinationFileName: String) {
+            destinationFileName: String,
+            result: MethodChannel.Result) {
         val uiScope = CoroutineScope(Dispatchers.Main)
         uiScope.launch {
             try {
-                Log.d(LOG_TAG, "Launch...")
                 Log.d(LOG_TAG, "Copy on background...")
                 val filePath = withContext(Dispatchers.IO) {
                     copyFileToCacheDir(context, sourceFileUri, destinationFileName)
                 }
                 Log.d(LOG_TAG, "...copied on background, result: $filePath")
-                finishSuccessfully(filePath)
-                Log.d(LOG_TAG, "...launch")
+                result.success(filePath)
             } catch (e: Exception) {
                 Log.e(LOG_TAG, "copyFileToCacheDirOnBackground failed", e)
-                finishWithError("file_copy_failed", e.localizedMessage, e.toString())
+                result.error("file_copy_failed", e.localizedMessage, e.toString())
             }
         }
     }
@@ -279,13 +350,13 @@ class FileDialog(
             context: Context,
             sourceFileUri: Uri,
             destinationFileName: String): String {
-        // get destination file on cache dir
-        val destinationFile = File(context.cacheDir.path, destinationFileName).apply {
-            if (exists()) {
-                Log.d(LOG_TAG, "Deleting existing destination file '$path'")
-                delete()
-            }
-        }
+        // copy to a unique subdirectory of the cache dir (keeping the display
+        // file name) so concurrent copies of identically named picked files
+        // can never write to the same destination
+        val destinationFile = File(
+                File(context.cacheDir, "file_dialog-${UUID.randomUUID()}"),
+                destinationFileName)
+        destinationFile.parentFile?.mkdirs()
 
         // copy file to cache dir
         Log.d(LOG_TAG, "Copying '$sourceFileUri' to '${destinationFile.path}'")
@@ -339,7 +410,9 @@ class FileDialog(
 
     private fun saveFileOnBackground(
             sourceFile: File,
-            destinationFileUri: Uri
+            destinationFileUri: Uri,
+            isSourceFileTemp: Boolean,
+            result: MethodChannel.Result
     ) {
         val uiScope = CoroutineScope(Dispatchers.Main)
         uiScope.launch {
@@ -349,13 +422,13 @@ class FileDialog(
                     saveFile(sourceFile, destinationFileUri)
                 }
                 Log.d(LOG_TAG, "...saved file on background, result: $filePath")
-                finishSuccessfully(filePath)
+                result.success(filePath)
             } catch (e: SecurityException) {
                 Log.e(LOG_TAG, "saveFileOnBackground", e)
-                finishWithError("security_exception", e.localizedMessage, e.toString())
+                result.error("security_exception", e.localizedMessage, e.toString())
             } catch (e: Exception) {
                 Log.e(LOG_TAG, "saveFileOnBackground failed", e)
-                finishWithError("save_file_failed", e.localizedMessage, e.toString())
+                result.error("save_file_failed", e.localizedMessage, e.toString())
             } finally {
                 if (isSourceFileTemp) {
                     Log.d(LOG_TAG, "Deleting source file: ${sourceFile.path}")
@@ -381,35 +454,58 @@ class FileDialog(
         return destinationFileUri.path!!
     }
 
-    private fun setPendingResult(result: MethodChannel.Result): Boolean {
+    /**
+     * Claims the pending-dialog slot for a new launch and returns the request
+     * code allocated for it, or null if another dialog is already pending.
+     */
+    private fun setPendingDialog(operation: DialogOperation, result: MethodChannel.Result): Int? {
         synchronized(resultLock) {
-            if (pendingResult != null) {
-                return false
+            if (pendingDialog != null) {
+                return null
             }
-            pendingResult = result
-            return true
+            val requestCode = nextRequestCode()
+            // wrap so the result can never be submitted more than once
+            pendingDialog = PendingDialog(operation, SingleCompletionResult(result), requestCode)
+            return requestCode
         }
     }
 
     private fun finishWithAlreadyActiveError(result: MethodChannel.Result) {
         Log.w(LOG_TAG, "File dialog is already active")
+        result.error("already_active", "File dialog is already active", null)
     }
 
-    private fun finishSuccessfully(filePath: String?) {
-        val result: MethodChannel.Result?
+    private fun takePendingResult(): MethodChannel.Result? {
         synchronized(resultLock) {
-            result = pendingResult
-            pendingResult = null
+            val result = pendingDialog?.result
+            pendingDialog = null
+            return result
         }
-        result?.success(filePath)
+    }
+
+    /**
+     * Completes a pending result as cancelled (success(null)). Called by the
+     * plugin when this FileDialog is discarded while a dialog result is still
+     * pending, so the Dart future resolves instead of hanging forever.
+     */
+    internal fun cancelPendingResult() {
+        val dialog: PendingDialog?
+        synchronized(resultLock) {
+            dialog = pendingDialog
+            pendingDialog = null
+        }
+        if (dialog == null) {
+            return
+        }
+        Log.w(LOG_TAG, "Cancelling pending result")
+        if (dialog.operation == DialogOperation.SAVE_FILE && isSourceFileTemp) {
+            Log.d(LOG_TAG, "Deleting source file: ${sourceFile?.path}")
+            sourceFile?.delete()
+        }
+        dialog.result.success(null)
     }
 
     private fun finishWithError(errorCode: String, errorMessage: String?, errorDetails: String?) {
-        val result: MethodChannel.Result?
-        synchronized(resultLock) {
-            result = pendingResult
-            pendingResult = null
-        }
-        result?.error(errorCode, errorMessage, errorDetails)
+        takePendingResult()?.error(errorCode, errorMessage, errorDetails)
     }
 }
