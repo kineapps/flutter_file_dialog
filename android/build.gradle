@@ -58,6 +58,9 @@ android {
     lint {
         disable 'InvalidPackage'
     }
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
 }
 
 // The kotlin {} DSL is only registered when the Kotlin Gradle Plugin is applied;
@@ -74,4 +77,6 @@ dependencies {
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutinesVersion"
     implementation 'androidx.documentfile:documentfile:1.0.1'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.mockito:mockito-core:5.14.2'
 }

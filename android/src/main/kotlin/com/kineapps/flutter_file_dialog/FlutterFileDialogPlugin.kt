@@ -105,8 +105,17 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
     private fun doOnAttachedToActivity(activityBinding: ActivityPluginBinding?) {
         Log.d(LOG_TAG, "doOnAttachedToActivity - IN")
 
+        // remove a previously registered FileDialog from the old binding so
+        // stale listeners cannot process dialog results, and resolve its
+        // pending result (if any) so the Dart future does not hang
+        if (fileDialog != null) {
+            this.activityBinding?.removeActivityResultListener(fileDialog!!)
+            fileDialog!!.cancelPendingResult()
+            fileDialog = null
+        }
+
         this.activityBinding = activityBinding
-        activityBinding?.let { createFileDialog(it) } ?: run { this.fileDialog = null }
+        activityBinding?.let { createFileDialog(it) }
 
         Log.d(LOG_TAG, "doOnAttachedToActivity - OUT")
     }
@@ -116,6 +125,7 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
 
         if (fileDialog != null) {
             activityBinding?.removeActivityResultListener(fileDialog!!)
+            fileDialog!!.cancelPendingResult()
             fileDialog = null
         }
         activityBinding = null
