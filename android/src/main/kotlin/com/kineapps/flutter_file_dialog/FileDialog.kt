@@ -25,10 +25,11 @@ import java.util.concurrent.atomic.AtomicInteger
 private const val LOG_TAG = "FileDialog"
 
 // request codes are allocated per dialog launch (see nextRequestCode) so a
-// stale or re-delivered activity result from an earlier launch can never be
-// matched to a newer launch's pending result
+// stale or re-delivered activity result from an earlier launch cannot be
+// matched to a newer launch's pending result (codes wrap only after
+// REQUEST_CODE_RANGE launches, and must stay below the 0xFFFF Android limit)
 private const val REQUEST_CODE_BASE = 19110
-private const val REQUEST_CODE_RANGE = 300
+private const val REQUEST_CODE_RANGE = 40000
 
 // https://developer.android.com/guide/topics/providers/document-provider
 // https://developer.android.com/reference/android/content/Intent.html#ACTION_CREATE_DOCUMENT
@@ -468,9 +469,20 @@ class FileDialog(
      * pending, so the Dart future resolves instead of hanging forever.
      */
     internal fun cancelPendingResult() {
-        val result = takePendingResult() ?: return
+        val dialog: PendingDialog?
+        synchronized(resultLock) {
+            dialog = pendingDialog
+            pendingDialog = null
+        }
+        if (dialog == null) {
+            return
+        }
         Log.w(LOG_TAG, "Cancelling pending result")
-        result.success(null)
+        if (dialog.operation == DialogOperation.SAVE_FILE && isSourceFileTemp) {
+            Log.d(LOG_TAG, "Deleting source file: ${sourceFile?.path}")
+            sourceFile?.delete()
+        }
+        dialog.result.success(null)
     }
 
     private fun finishWithError(errorCode: String, errorMessage: String?, errorDetails: String?) {

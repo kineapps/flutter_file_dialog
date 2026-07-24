@@ -158,6 +158,31 @@ class FileDialogTest {
     }
 
     @Test
+    fun `cancelPendingResult - should delete the temporary source file of a pending save`() {
+        // GIVEN a pending saveFile that wrote its data to a temporary file
+        val dialog = newDialog()
+        val result = FakeMethodChannelResult()
+        val fileNamePrefix = "cancel_temp_test_${System.nanoTime()}"
+        dialog.saveFile(
+                result = result,
+                sourceFilePath = null,
+                data = byteArrayOf(1, 2, 3),
+                fileName = fileNamePrefix,
+                mimeTypesFilter = null,
+                localOnly = false)
+
+        // WHEN
+        dialog.cancelPendingResult()
+
+        // THEN the result is cancelled and the temporary file is deleted
+        assertEquals(1, result.successCount)
+        assertNull(result.lastSuccessValue)
+        val leftovers = File(System.getProperty("java.io.tmpdir"))
+                .listFiles { file -> file.name.startsWith(fileNamePrefix) }
+        assertEquals(0, leftovers?.size ?: 0)
+    }
+
+    @Test
     fun `cancelPendingResult - should do nothing when no result is pending`() {
         // GIVEN
         val dialog = newDialog()
