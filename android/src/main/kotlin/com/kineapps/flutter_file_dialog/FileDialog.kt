@@ -191,14 +191,18 @@ class FileDialog(
                 return
             }
         } else {
-            // write data to a temporary file; on failure release the
-            // pending-dialog slot so later calls do not get already_active
+            // write data to a temporary file; on failure delete the partial
+            // file and release the pending-dialog slot so later calls do not
+            // get already_active
             isSourceFileTemp = true
+            var tempFile: File? = null
             try {
-                sourceFile = File.createTempFile(fileName!!, "")
-                sourceFile!!.writeBytes(data!!)
+                tempFile = File.createTempFile(fileName!!, "")
+                tempFile.writeBytes(data!!)
+                sourceFile = tempFile
             } catch (e: Exception) {
                 Log.e(LOG_TAG, "saveFile - creating temporary file failed", e)
+                tempFile?.delete()
                 finishWithError("save_file_failed", e.localizedMessage, e.toString())
                 return
             }
@@ -235,6 +239,7 @@ class FileDialog(
         // can never block or complete a later dialog's result; consume it only
         // when the request code matches the pending launch, so a re-delivered
         // result from an earlier launch can never complete a newer dialog's
+        // pending result
         val pending: PendingDialog
         synchronized(resultLock) {
             val current = pendingDialog
