@@ -7,7 +7,6 @@ package com.kineapps.flutter_file_dialog
 
 import android.app.Activity
 import android.net.Uri
-import android.os.Build
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -176,15 +175,6 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
             fileName: String?,
             data: ByteArray?,
     ) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            result.error(
-                    "minimum_target",
-                    "saveFileToDirectory() available only on Android 21 and above",
-                    ""
-            )
-            return
-        }
-
         Log.d(LOG_TAG, "saveFileToDirectory - IN")
 
         if (directory.isNullOrEmpty()) {

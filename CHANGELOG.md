@@ -1,6 +1,7 @@
 ## 3.3.3
 
 - [Android] Fix fatal "Reply already submitted" crash on devices without a documents provider (#60): startActivityForResult throwing ActivityNotFoundException left the dialog pending while Android still delivered RESULT_CANCELED, so the result was replied twice; the call now fails with an "activity_not_found" error
+- [Android] Removed the dead Android < 21 "minimum_target" guards from pickDirectory and saveFileToDirectory (minSdk is 24)
 
 ## 3.3.2
 

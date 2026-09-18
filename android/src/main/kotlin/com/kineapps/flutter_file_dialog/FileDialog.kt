@@ -10,7 +10,6 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.provider.OpenableColumns
 import android.util.Log
 import io.flutter.plugin.common.MethodChannel
@@ -74,15 +73,6 @@ class FileDialog(
     }
 
     fun pickDirectory(result: MethodChannel.Result) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            result.error(
-                    "minimum_target",
-                    "pickDirectory() available only on Android 21 and above",
-                    ""
-            )
-            return
-        }
-
         if (activity == null) {
             result.error(
                 "internal_error",
@@ -106,7 +96,8 @@ class FileDialog(
     }
 
     fun isPickDirectorySupported(result: MethodChannel.Result) {
-        result.success(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+        // always supported: minSdk 24 is above the API 21 requirement
+        result.success(true)
     }
 
     fun pickFile(result: MethodChannel.Result,

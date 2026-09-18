@@ -343,6 +343,21 @@ class FileDialogTest {
     }
 
     @Test
+    fun `pickDirectory - should reply activity_not_found when no activity handles the intent`() {
+        // GIVEN
+        val dialog = newDialogWithoutDocumentsProvider()
+        val result = FakeMethodChannelResult()
+
+        // WHEN
+        dialog.pickDirectory(result)
+
+        // THEN
+        assertEquals(1, result.completionCount)
+        assertEquals("activity_not_found", result.lastErrorCode)
+        assertEquals(-1, dialog.pendingRequestCode)
+    }
+
+    @Test
     fun `saveFile - should reply activity_not_found and delete the temporary source file`() {
         // GIVEN a saveFile that writes its data to a temporary file
         val dialog = newDialogWithoutDocumentsProvider()
