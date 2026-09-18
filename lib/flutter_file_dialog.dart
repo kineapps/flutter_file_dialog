@@ -14,7 +14,9 @@ class FlutterFileDialog {
   /// Displays a dialog for picking a file.
   ///
   /// Returns the path of the picked file or null if operation was cancelled.
-  /// Throws exception on error.
+  /// Throws exception on error. On Android a [PlatformException] with code
+  /// `activity_not_found` is thrown when the device has no app able to show
+  /// the file picker (no documents provider installed).
   static Future<String?> pickFile({OpenFileDialogParams? params}) {
     return _channel.invokeMethod('pickFile', params?.toJson());
   }
@@ -25,7 +27,9 @@ class FlutterFileDialog {
   /// you are targeting an older version of Android/iOS.
   ///
   /// Returns the path of the picked directory or null if operation was cancelled.
-  /// Throws exception on error.
+  /// Throws exception on error. On Android a [PlatformException] with code
+  /// `activity_not_found` is thrown when the device has no app able to show
+  /// the directory picker (no documents provider installed).
   static Future<DirectoryLocation?> pickDirectory() async {
     final String? uriString = await _channel.invokeMethod('pickDirectory');
     if (uriString == null) return null;
@@ -40,7 +44,9 @@ class FlutterFileDialog {
   /// saves the file to the selected location.
   ///
   /// Returns path of the saved file or null if operation was cancelled.
-  /// Throws exception on error.
+  /// Throws exception on error. On Android a [PlatformException] with code
+  /// `activity_not_found` is thrown when the device has no app able to show
+  /// the save dialog (no documents provider installed).
   static Future<String?> saveFile({SaveFileDialogParams? params}) {
     return _channel.invokeMethod('saveFile', params?.toJson());
   }

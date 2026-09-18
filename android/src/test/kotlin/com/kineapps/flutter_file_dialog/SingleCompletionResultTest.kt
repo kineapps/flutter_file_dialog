@@ -5,6 +5,7 @@
 
 package com.kineapps.flutter_file_dialog
 
+import io.flutter.plugin.common.MethodChannel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -130,5 +131,64 @@ class SingleCompletionResultTest {
         assertEquals(1, fake.notImplementedCount)
         assertEquals(0, fake.successCount)
         assertEquals(0, fake.errorCount)
+    }
+
+    /** Inner result that throws like DartMessenger does on a second reply. */
+    private class AlreadySubmittedResult : MethodChannel.Result {
+        var callCount = 0
+
+        override fun success(result: Any?) {
+            callCount++
+            throw IllegalStateException("Reply already submitted")
+        }
+
+        override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
+            callCount++
+            throw IllegalStateException("Reply already submitted")
+        }
+
+        override fun notImplemented() {
+            callCount++
+            throw IllegalStateException("Reply already submitted")
+        }
+    }
+
+    @Test
+    fun `success - should not propagate the inner result's IllegalStateException`() {
+        // GIVEN
+        val inner = AlreadySubmittedResult()
+        val result = SingleCompletionResult(inner)
+
+        // WHEN (no exception)
+        result.success(null)
+
+        // THEN the inner result was still called exactly once
+        assertEquals(1, inner.callCount)
+    }
+
+    @Test
+    fun `error - should not propagate the inner result's IllegalStateException`() {
+        // GIVEN
+        val inner = AlreadySubmittedResult()
+        val result = SingleCompletionResult(inner)
+
+        // WHEN (no exception)
+        result.error("some_error", "message", null)
+
+        // THEN
+        assertEquals(1, inner.callCount)
+    }
+
+    @Test
+    fun `notImplemented - should not propagate the inner result's IllegalStateException`() {
+        // GIVEN
+        val inner = AlreadySubmittedResult()
+        val result = SingleCompletionResult(inner)
+
+        // WHEN (no exception)
+        result.notImplemented()
+
+        // THEN
+        assertEquals(1, inner.callCount)
     }
 }
