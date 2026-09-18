@@ -6,17 +6,42 @@
 package com.kineapps.flutter_file_dialog
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.mockito.ArgumentCaptor
+import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.anyInt
+import org.mockito.Mockito.doThrow
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.verify
 import java.io.File
 
 class FileDialogTest {
 
     private fun newDialog(): FileDialog = FileDialog(mock(Activity::class.java))
+
+    /** An activity with no app to handle the dialog intents. */
+    private fun newActivityWithoutDocumentsProvider(): Activity {
+        val activity = mock(Activity::class.java)
+        doThrow(ActivityNotFoundException("No Activity found to handle Intent"))
+                .`when`(activity).startActivityForResult(any(Intent::class.java), anyInt())
+        return activity
+    }
+
+    private fun newDialogWithoutDocumentsProvider(): FileDialog =
+            FileDialog(newActivityWithoutDocumentsProvider())
+
+    /** The request code the dialog passed to the activity's (failed) launch. */
+    private fun launchedRequestCode(activity: Activity): Int {
+        val captor = ArgumentCaptor.forClass(Int::class.java)
+        verify(activity).startActivityForResult(any(Intent::class.java), captor.capture())
+        return captor.value
+    }
 
     private fun newSourceFile(): File =
             File.createTempFile("file_dialog_test", ".txt").apply {
@@ -272,5 +297,73 @@ class FileDialogTest {
         // THEN
         assertEquals(1, result.errorCount)
         assertEquals("internal_error", result.lastErrorCode)
+    }
+
+    @Test
+    fun `pickFile - should reply activity_not_found when no activity handles the intent`() {
+        // GIVEN
+        val dialog = newDialogWithoutDocumentsProvider()
+        val result = FakeMethodChannelResult()
+
+        // WHEN
+        dialog.pickFile(
+                result = result,
+                fileExtensionsFilter = null,
+                mimeTypesFilter = null,
+                localOnly = false,
+                copyFileToCacheDir = true)
+
+        // THEN the call fails exactly once and the pending slot is released
+        assertEquals(1, result.completionCount)
+        assertEquals("activity_not_found", result.lastErrorCode)
+        assertEquals(-1, dialog.pendingRequestCode)
+    }
+
+    @Test
+    fun `pickFile - should ignore the RESULT_CANCELED Android delivers for a failed start`() {
+        // GIVEN a launch that threw ActivityNotFoundException
+        val activity = newActivityWithoutDocumentsProvider()
+        val dialog = FileDialog(activity)
+        val result = FakeMethodChannelResult()
+        dialog.pickFile(
+                result = result,
+                fileExtensionsFilter = null,
+                mimeTypesFilter = null,
+                localOnly = false,
+                copyFileToCacheDir = true)
+        val requestCode = launchedRequestCode(activity)
+
+        // WHEN that launch's cancelled result arrives anyway
+        val handled = dialog.onActivityResult(requestCode, Activity.RESULT_CANCELED, null)
+
+        // THEN it is not handled and the already-failed result is untouched
+        assertFalse(handled)
+        assertEquals(1, result.completionCount)
+        assertEquals("activity_not_found", result.lastErrorCode)
+    }
+
+    @Test
+    fun `saveFile - should reply activity_not_found and delete the temporary source file`() {
+        // GIVEN a saveFile that writes its data to a temporary file
+        val dialog = newDialogWithoutDocumentsProvider()
+        val result = FakeMethodChannelResult()
+        val fileNamePrefix = "not_found_temp_test_${System.nanoTime()}"
+
+        // WHEN
+        dialog.saveFile(
+                result = result,
+                sourceFilePath = null,
+                data = byteArrayOf(1, 2, 3),
+                fileName = fileNamePrefix,
+                mimeTypesFilter = null,
+                localOnly = false)
+
+        // THEN the call fails once, the slot is free and the temp file is gone
+        assertEquals(1, result.completionCount)
+        assertEquals("activity_not_found", result.lastErrorCode)
+        assertEquals(-1, dialog.pendingRequestCode)
+        val leftovers = File(System.getProperty("java.io.tmpdir"))
+                .listFiles { file -> file.name.startsWith(fileNamePrefix) }
+        assertEquals(0, leftovers?.size ?: 0)
     }
 }

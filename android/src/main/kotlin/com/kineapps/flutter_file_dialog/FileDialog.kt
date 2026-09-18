@@ -6,6 +6,7 @@
 package com.kineapps.flutter_file_dialog
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -99,7 +100,7 @@ class FileDialog(
         }
 
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
-        activity?.startActivityForResult(intent, requestCode)
+        startDialogActivity(intent, requestCode)
 
         Log.d(LOG_TAG, "pickDirectory - OUT")
     }
@@ -141,7 +142,7 @@ class FileDialog(
             applyMimeTypesFilterToIntent(mimeTypesFilter, this)
         }
 
-        activity?.startActivityForResult(intent, requestCode)
+        startDialogActivity(intent, requestCode)
 
         Log.d(LOG_TAG, "pickFile - OUT")
     }
@@ -216,7 +217,7 @@ class FileDialog(
         }
         applyMimeTypesFilterToIntent(mimeTypesFilter, intent)
 
-        activity?.startActivityForResult(intent, requestCode)
+        startDialogActivity(intent, requestCode)
 
         Log.d(LOG_TAG, "saveFile - OUT")
     }
@@ -231,6 +232,26 @@ class FileDialog(
             }
         } else {
             intent.type = "*/*"
+        }
+    }
+
+    /**
+     * Launches the dialog activity for the pending launch. Devices without a
+     * documents provider have no activity for the intent, so
+     * startActivityForResult throws ActivityNotFoundException while Android
+     * still delivers RESULT_CANCELED for the failed start: release the pending
+     * slot and fail the call here so that later activity result finds nothing
+     * to complete, instead of replying to an already-answered call.
+     */
+    private fun startDialogActivity(intent: Intent, requestCode: Int) {
+        try {
+            activity?.startActivityForResult(intent, requestCode)
+        } catch (e: ActivityNotFoundException) {
+            Log.e(LOG_TAG, "No activity found to handle ${intent.action}", e)
+            takePendingDialog()?.result?.error(
+                    "activity_not_found",
+                    "No activity found to handle the file dialog intent",
+                    e.toString())
         }
     }
 
@@ -489,20 +510,27 @@ class FileDialog(
      * pending, so the Dart future resolves instead of hanging forever.
      */
     internal fun cancelPendingResult() {
+        val dialog = takePendingDialog() ?: return
+        Log.w(LOG_TAG, "Cancelling pending result")
+        dialog.result.success(null)
+    }
+
+    /**
+     * Takes ownership of the pending dialog (if any) without launching or
+     * completing it, deleting the temporary source file of a pending save so
+     * it is not leaked.
+     */
+    private fun takePendingDialog(): PendingDialog? {
         val dialog: PendingDialog?
         synchronized(resultLock) {
             dialog = pendingDialog
             pendingDialog = null
         }
-        if (dialog == null) {
-            return
-        }
-        Log.w(LOG_TAG, "Cancelling pending result")
-        if (dialog.operation == DialogOperation.SAVE_FILE && isSourceFileTemp) {
+        if (dialog?.operation == DialogOperation.SAVE_FILE && isSourceFileTemp) {
             Log.d(LOG_TAG, "Deleting source file: ${sourceFile?.path}")
             sourceFile?.delete()
         }
-        dialog.result.success(null)
+        return dialog
     }
 
     private fun finishWithError(errorCode: String, errorMessage: String?, errorDetails: String?) {

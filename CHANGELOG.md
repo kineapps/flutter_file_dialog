@@ -1,3 +1,7 @@
+## 3.3.3
+
+- [Android] Fix fatal "Reply already submitted" crash on devices without a documents provider (#60): startActivityForResult throwing ActivityNotFoundException left the dialog pending while Android still delivered RESULT_CANCELED, so the result was replied twice; the call now fails with an "activity_not_found" error
+
 ## 3.3.2
 
 - [Android] Fix fatal "Reply already submitted" crash (#58): complete every dialog result exactly once, reply with an "already_active" error when a dialog is already open instead of leaving the call unanswered, stop stale activity-result listeners from processing dialog results after plugin re-attachment, and stop a slow post-dialog file copy from blocking subsequent dialogs
