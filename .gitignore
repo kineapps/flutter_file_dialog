@@ -62,3 +62,6 @@ build/
 .project
 .classpath
 .settings
+
+# Claude Code plan files
+.claude/plans/

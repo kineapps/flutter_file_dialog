@@ -26,7 +26,6 @@ import org.mockito.Mockito.verifyNoMoreInteractions
 import org.mockito.Mockito.`when`
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
@@ -219,20 +218,6 @@ class FileDialogSaveFileTest {
             val order = inOrder(resolver)
             order.verify(resolver).openOutputStream(destinationUri, "wt")
             verifyNoMoreInteractions(resolver)
-        }
-    }
-
-    private class RecordingOutputStream : ByteArrayOutputStream() {
-        val events = mutableListOf<String>()
-
-        override fun flush() {
-            events.add("flush")
-            super.flush()
-        }
-
-        override fun close() {
-            events.add("close")
-            super.close()
         }
     }
 }
