@@ -1,3 +1,7 @@
+## 3.3.5
+
+- [Android] Fix saveFileToDirectory failing on storage providers that stream to a remote (e.g. rclone, Nextcloud) (#64): the new file is written without truncating it, so a pipe returned by the provider no longer fails with "Illegal seek"; a missing output stream and other write failures now reply with a "save_file_failed" error ("security_exception" for a SecurityException) instead of escaping the method call
+
 ## 3.3.4
 
 - [Android] Fix saving to storage providers that stream to a remote (e.g. rclone, Nextcloud) failing with "Illegal seek" (#62): the destination is opened in truncate mode ("wt"), and the plugin truncates the file itself only when the provider rejects that mode and the destination is a regular file

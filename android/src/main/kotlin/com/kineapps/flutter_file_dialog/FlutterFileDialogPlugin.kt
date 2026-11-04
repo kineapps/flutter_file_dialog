@@ -5,7 +5,7 @@
 
 package com.kineapps.flutter_file_dialog
 
-import android.app.Activity
+import android.content.ContentResolver
 import android.net.Uri
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
@@ -17,6 +17,7 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
+import java.io.IOException
 
 class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
     private var fileDialog: FileDialog? = null
@@ -198,25 +199,36 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
         }
 
         activityBinding?.activity?.let { activity ->
-            val dirURI: Uri = Uri.parse(directory)
-            val outputFolder: DocumentFile? = DocumentFile.fromTreeUri(activity, dirURI)
-            val newFile = outputFolder?.createFile(mimeType, fileName)
-            newFile?.uri?.let { writeFile(activity, data, it) }
-            result.success(newFile?.uri?.path)
+            try {
+                val dirURI: Uri = Uri.parse(directory)
+                val outputFolder: DocumentFile? = DocumentFile.fromTreeUri(activity, dirURI)
+                val newFile = outputFolder?.createFile(mimeType, fileName)
+                newFile?.uri?.let { writeFile(activity.contentResolver, data, it) }
+                result.success(newFile?.uri?.path)
+            } catch (e: SecurityException) {
+                Log.e(LOG_TAG, "saveFileToDirectory", e)
+                result.error("security_exception", e.localizedMessage, e.toString())
+            } catch (e: Exception) {
+                Log.e(LOG_TAG, "saveFileToDirectory failed", e)
+                result.error("save_file_failed", e.localizedMessage, e.toString())
+            }
         }
 
         Log.d(LOG_TAG, "saveFileToDirectory - OUT")
     }
 
     private fun writeFile(
-            activity: Activity,
+            contentResolver: ContentResolver,
             data: ByteArray,
             destinationFileUri: Uri
     ) {
-        activity.contentResolver.openOutputStream(destinationFileUri).use { outputStream ->
-            outputStream as java.io.FileOutputStream
-            outputStream.channel.truncate(0)
-            outputStream.write(data)
+        // The document was just created, so it is empty: no truncation, which
+        // would fail on providers that return a pipe.
+        val outputStream = contentResolver.openOutputStream(destinationFileUri)
+                ?: throw IOException("openOutputStream returned null")
+        outputStream.use {
+            it.write(data)
+            it.flush()
         }
         Log.d(LOG_TAG, "Saved file to '${destinationFileUri.path}'")
     }
