@@ -1,3 +1,7 @@
+## 3.3.4
+
+- [Android] Fix saving to storage providers that stream to a remote (e.g. rclone, Nextcloud) failing with "Illegal seek" (#62): the destination is opened in truncate mode ("wt"), and the plugin truncates the file itself only when the provider rejects that mode and the destination is a regular file
+
 ## 3.3.3
 
 - [Android] Fix fatal "Reply already submitted" crash on devices without a documents provider (#60): startActivityForResult throwing ActivityNotFoundException left the dialog pending while Android still delivered RESULT_CANCELED, so the result was replied twice; the call now fails with an "activity_not_found" error
