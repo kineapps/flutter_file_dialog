@@ -11,6 +11,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.system.Os
+import android.system.OsConstants
 import android.util.Log
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry
@@ -19,6 +21,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileNotFoundException
+import java.io.FileOutputStream
+import java.io.IOException
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -450,16 +455,37 @@ class FileDialog(
         }
     }
 
-    private fun saveFile(
+    internal fun saveFile(
             sourceFile: File,
             destinationFileUri: Uri
     ): String {
         Log.d(LOG_TAG, "Saving file '${sourceFile.path}' to '${destinationFileUri.path}'")
+        val contentResolver = activity?.contentResolver
+                ?: throw IOException("No activity is available")
         sourceFile.inputStream().use { inputStream ->
-            activity?.contentResolver?.openOutputStream(destinationFileUri).use { outputStream ->
-                outputStream as java.io.FileOutputStream
-                outputStream.channel.truncate(0)
+            // Ask the provider to truncate; the returned stream may be a pipe.
+            var openedWithoutTruncation = false
+            val destinationStream = try {
+                contentResolver.openOutputStream(destinationFileUri, "wt")
+            } catch (e: Exception) {
+                if (e !is FileNotFoundException &&
+                        e !is UnsupportedOperationException &&
+                        e !is IllegalArgumentException) {
+                    throw e
+                }
+                Log.d(LOG_TAG, "Opening destination with wt failed; retrying with w", e)
+                openedWithoutTruncation = true
+                contentResolver.openOutputStream(destinationFileUri, "w")
+            } ?: throw IOException("openOutputStream returned null")
+
+            destinationStream.use { outputStream ->
+                // Preserve overwrite behavior for regular files without seeking on pipes.
+                if (openedWithoutTruncation && outputStream is FileOutputStream &&
+                        OsConstants.S_ISREG(Os.fstat(outputStream.fd).st_mode)) {
+                    outputStream.channel.truncate(0)
+                }
                 inputStream.copyTo(outputStream)
+                outputStream.flush()
             }
         }
         Log.d(LOG_TAG, "Saved file to '${destinationFileUri.path}'")
