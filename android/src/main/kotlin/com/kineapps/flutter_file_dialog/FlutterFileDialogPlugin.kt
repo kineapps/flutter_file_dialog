@@ -5,7 +5,7 @@
 
 package com.kineapps.flutter_file_dialog
 
-import android.content.ContentResolver
+import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
@@ -17,13 +17,23 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
-import java.io.IOException
+import java.io.ByteArrayInputStream
 
-class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
+/** Creates a document in a document tree and returns its URI, or null if it could not be created. */
+internal typealias DocumentCreator = (context: Context, directoryUri: Uri, mimeType: String, fileName: String) -> Uri?
+
+private fun createDocumentInTree(context: Context, directoryUri: Uri, mimeType: String, fileName: String): Uri? =
+        DocumentFile.fromTreeUri(context, directoryUri)?.createFile(mimeType, fileName)?.uri
+
+class FlutterFileDialogPlugin internal constructor(
+        private val createDocument: DocumentCreator
+) : FlutterPlugin, ActivityAware, MethodCallHandler {
     private var fileDialog: FileDialog? = null
     private var pluginBinding: FlutterPlugin.FlutterPluginBinding? = null
     private var activityBinding: ActivityPluginBinding? = null
     private var methodChannel: MethodChannel? = null
+
+    constructor() : this(::createDocumentInTree)
 
     companion object {
         const val LOG_TAG = "FlutterFileDialogPlugin"
@@ -198,39 +208,18 @@ class FlutterFileDialogPlugin : FlutterPlugin, ActivityAware, MethodCallHandler 
             return
         }
 
-        activityBinding?.activity?.let { activity ->
-            try {
-                val dirURI: Uri = Uri.parse(directory)
-                val outputFolder: DocumentFile? = DocumentFile.fromTreeUri(activity, dirURI)
-                val newFile = outputFolder?.createFile(mimeType, fileName)
-                newFile?.uri?.let { writeFile(activity.contentResolver, data, it) }
-                result.success(newFile?.uri?.path)
-            } catch (e: SecurityException) {
-                Log.e(LOG_TAG, "saveFileToDirectory", e)
-                result.error("security_exception", e.localizedMessage, e.toString())
-            } catch (e: Exception) {
-                Log.e(LOG_TAG, "saveFileToDirectory failed", e)
-                result.error("save_file_failed", e.localizedMessage, e.toString())
+        val activity = activityBinding!!.activity
+        saveOnBackground(result) {
+            val uri = createDocument(activity, Uri.parse(directory), mimeType, fileName)
+            uri?.let {
+                ByteArrayInputStream(data).use { input ->
+                    writeToDocument(activity.contentResolver, input, it)
+                }
             }
+            uri?.path
         }
 
         Log.d(LOG_TAG, "saveFileToDirectory - OUT")
-    }
-
-    private fun writeFile(
-            contentResolver: ContentResolver,
-            data: ByteArray,
-            destinationFileUri: Uri
-    ) {
-        // The document was just created, so it is empty: no truncation, which
-        // would fail on providers that return a pipe.
-        val outputStream = contentResolver.openOutputStream(destinationFileUri)
-                ?: throw IOException("openOutputStream returned null")
-        outputStream.use {
-            it.write(data)
-            it.flush()
-        }
-        Log.d(LOG_TAG, "Saved file to '${destinationFileUri.path}'")
     }
 
     private fun createFileDialog(activityBinding: ActivityPluginBinding) {

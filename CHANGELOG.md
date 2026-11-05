@@ -1,3 +1,7 @@
+## 3.3.6
+
+- [Android] saveFileToDirectory now creates and writes the file on a background thread, so saving a large file to a storage provider that streams to a remote (e.g. rclone, Nextcloud) no longer blocks the UI (#67); it opens the new file the same way as saveFile (truncate mode "wt", falling back to "w"). Error codes are unchanged.
+
 ## 3.3.5
 
 - [Android] Fix saveFileToDirectory failing on storage providers that stream to a remote (e.g. rclone, Nextcloud) (#64): the new file is written without truncating it, so a pipe returned by the provider no longer fails with "Illegal seek"; a missing output stream and other write failures now reply with a "save_file_failed" error ("security_exception" for a SecurityException) instead of escaping the method call

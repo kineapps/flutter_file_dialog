@@ -11,8 +11,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
-import android.system.Os
-import android.system.OsConstants
 import android.util.Log
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry
@@ -21,8 +19,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileNotFoundException
-import java.io.FileOutputStream
 import java.io.IOException
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
@@ -327,8 +323,19 @@ class FileDialog(
                     return true
                 }
                 if (resultCode == Activity.RESULT_OK && data?.data != null) {
-                    val destinationFileUri = data.data
-                    saveFileOnBackground(this.sourceFile!!, destinationFileUri!!, isSourceFileTemp, result)
+                    val destinationFileUri = data.data!!
+                    val sourceFile = this.sourceFile!!
+                    val isSourceFileTemp = this.isSourceFileTemp
+                    saveOnBackground(result) {
+                        try {
+                            saveFile(sourceFile, destinationFileUri)
+                        } finally {
+                            if (isSourceFileTemp) {
+                                Log.d(LOG_TAG, "Deleting source file: ${sourceFile.path}")
+                                sourceFile.delete()
+                            }
+                        }
+                    }
                 } else {
                     Log.d(LOG_TAG, "Cancelled")
                     if (isSourceFileTemp) {
@@ -425,70 +432,14 @@ class FileDialog(
         return false
     }
 
-    private fun saveFileOnBackground(
-            sourceFile: File,
-            destinationFileUri: Uri,
-            isSourceFileTemp: Boolean,
-            result: MethodChannel.Result
-    ) {
-        val uiScope = CoroutineScope(Dispatchers.Main)
-        uiScope.launch {
-            try {
-                Log.d(LOG_TAG, "Saving file on background...")
-                val filePath = withContext(Dispatchers.IO) {
-                    saveFile(sourceFile, destinationFileUri)
-                }
-                Log.d(LOG_TAG, "...saved file on background, result: $filePath")
-                result.success(filePath)
-            } catch (e: SecurityException) {
-                Log.e(LOG_TAG, "saveFileOnBackground", e)
-                result.error("security_exception", e.localizedMessage, e.toString())
-            } catch (e: Exception) {
-                Log.e(LOG_TAG, "saveFileOnBackground failed", e)
-                result.error("save_file_failed", e.localizedMessage, e.toString())
-            } finally {
-                if (isSourceFileTemp) {
-                    Log.d(LOG_TAG, "Deleting source file: ${sourceFile.path}")
-                    sourceFile.delete()
-                }
-            }
-        }
-    }
-
-    internal fun saveFile(
+    private fun saveFile(
             sourceFile: File,
             destinationFileUri: Uri
     ): String {
         Log.d(LOG_TAG, "Saving file '${sourceFile.path}' to '${destinationFileUri.path}'")
         val contentResolver = activity?.contentResolver
                 ?: throw IOException("No activity is available")
-        sourceFile.inputStream().use { inputStream ->
-            // Ask the provider to truncate; the returned stream may be a pipe.
-            var openedWithoutTruncation = false
-            val destinationStream = try {
-                contentResolver.openOutputStream(destinationFileUri, "wt")
-            } catch (e: Exception) {
-                if (e !is FileNotFoundException &&
-                        e !is UnsupportedOperationException &&
-                        e !is IllegalArgumentException) {
-                    throw e
-                }
-                Log.d(LOG_TAG, "Opening destination with wt failed; retrying with w", e)
-                openedWithoutTruncation = true
-                contentResolver.openOutputStream(destinationFileUri, "w")
-            } ?: throw IOException("openOutputStream returned null")
-
-            destinationStream.use { outputStream ->
-                // Preserve overwrite behavior for regular files without seeking on pipes.
-                if (openedWithoutTruncation && outputStream is FileOutputStream &&
-                        OsConstants.S_ISREG(Os.fstat(outputStream.fd).st_mode)) {
-                    outputStream.channel.truncate(0)
-                }
-                inputStream.copyTo(outputStream)
-                outputStream.flush()
-            }
-        }
-        Log.d(LOG_TAG, "Saved file to '${destinationFileUri.path}'")
+        sourceFile.inputStream().use { writeToDocument(contentResolver, it, destinationFileUri) }
         return destinationFileUri.path!!
     }
 

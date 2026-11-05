@@ -1,0 +1,254 @@
+// Copyright (c) 2026 KineApps. All rights reserved.
+//
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
+
+package com.kineapps.flutter_file_dialog
+
+import android.content.ContentResolver
+import android.net.Uri
+import android.os.Looper
+import android.os.ParcelFileDescriptor
+import android.system.Os
+import android.system.StructStat
+import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertThrows
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import org.junit.runner.RunWith
+import org.mockito.Mockito.inOrder
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.mockStatic
+import org.mockito.Mockito.verifyNoMoreInteractions
+import org.mockito.Mockito.`when`
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import java.io.ByteArrayInputStream
+import java.io.FileNotFoundException
+import java.io.FileOutputStream
+import java.io.IOException
+import java.io.RandomAccessFile
+import java.nio.channels.FileChannel
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [28], manifest = Config.NONE)
+class DocumentSaverTest {
+
+    @get:Rule
+    val temporaryFolder = TemporaryFolder()
+
+    private val destinationUri = Uri.parse("content://test/document/file.txt")
+    private val contentResolver = mock(ContentResolver::class.java)
+    private val bytes = byteArrayOf(0, 1, 2, 127, -1)
+
+    private fun write(resolver: ContentResolver = contentResolver) =
+            writeToDocument(resolver, ByteArrayInputStream(bytes), destinationUri)
+
+    @Test
+    fun `writeToDocument - should write to a parcel pipe without accessing its channel`() {
+        // GIVEN: Robolectric backs createPipe with a regular file, not a native pipe.
+        // Reject channel access explicitly; native ESPIPE behavior needs a device test.
+        val pipe = ParcelFileDescriptor.createPipe()
+        ParcelFileDescriptor.AutoCloseInputStream(pipe[0]).use { inputStream ->
+            val outputStream = object : ParcelFileDescriptor.AutoCloseOutputStream(pipe[1]) {
+                override fun getChannel(): FileChannel {
+                    throw AssertionError("A pipe must not be truncated")
+                }
+            }
+            outputStream.use {
+                `when`(contentResolver.openOutputStream(destinationUri, "wt"))
+                        .thenReturn(outputStream)
+
+                // WHEN
+                write()
+
+                // THEN
+                assertArrayEquals(bytes, inputStream.readBytes())
+                val order = inOrder(contentResolver)
+                order.verify(contentResolver).openOutputStream(destinationUri, "wt")
+                verifyNoMoreInteractions(contentResolver)
+            }
+        }
+    }
+
+    @Test
+    fun `writeToDocument - should truncate a longer regular file after wt is rejected`() {
+        // GIVEN: rw preserves the old content and starts at offset zero, like mode w.
+        val destinationFile = temporaryFolder.newFile().apply {
+            writeText("previous content with a longer tail")
+        }
+        RandomAccessFile(destinationFile, "rw").use { destination ->
+            FileOutputStream(destination.fd).use { outputStream ->
+                `when`(contentResolver.openOutputStream(destinationUri, "wt"))
+                        .thenThrow(FileNotFoundException("Mode wt is not supported"))
+                `when`(contentResolver.openOutputStream(destinationUri, "w"))
+                        .thenReturn(outputStream)
+
+                // Robolectric fstat ignores the descriptor. Supply the real file's
+                // path-based stat; this does not verify native fd classification.
+                val stat = Os.stat(destinationFile.path)
+                mockStatic(Os::class.java).use { os ->
+                    os.`when`<StructStat> { Os.fstat(outputStream.fd) }
+                            .thenReturn(stat)
+
+                    // WHEN
+                    write()
+                }
+
+                // THEN
+                assertArrayEquals(bytes, destinationFile.readBytes())
+                val order = inOrder(contentResolver)
+                order.verify(contentResolver).openOutputStream(destinationUri, "wt")
+                order.verify(contentResolver).openOutputStream(destinationUri, "w")
+                verifyNoMoreInteractions(contentResolver)
+            }
+        }
+    }
+
+    @Test
+    fun `writeToDocument - should flush and close a non-file stream when wt succeeds`() {
+        // GIVEN
+        val outputStream = RecordingOutputStream()
+        `when`(contentResolver.openOutputStream(destinationUri, "wt"))
+                .thenReturn(outputStream)
+
+        // WHEN
+        write()
+
+        // THEN
+        assertArrayEquals(bytes, outputStream.toByteArray())
+        assertEquals(listOf("flush", "close"), outputStream.events)
+        val order = inOrder(contentResolver)
+        order.verify(contentResolver).openOutputStream(destinationUri, "wt")
+        verifyNoMoreInteractions(contentResolver)
+    }
+
+    @Test
+    fun `writeToDocument - should fall back for unsupported or invalid wt mode`() {
+        for (error in listOf(UnsupportedOperationException("wt"), IllegalArgumentException("wt"))) {
+            // GIVEN
+            val outputStream = RecordingOutputStream()
+            val resolver = mock(ContentResolver::class.java)
+            `when`(resolver.openOutputStream(destinationUri, "wt")).thenAnswer { throw error }
+            `when`(resolver.openOutputStream(destinationUri, "w")).thenReturn(outputStream)
+
+            // WHEN
+            write(resolver)
+
+            // THEN
+            assertArrayEquals(bytes, outputStream.toByteArray())
+            assertEquals(listOf("flush", "close"), outputStream.events)
+            val order = inOrder(resolver)
+            order.verify(resolver).openOutputStream(destinationUri, "wt")
+            order.verify(resolver).openOutputStream(destinationUri, "w")
+            verifyNoMoreInteractions(resolver)
+        }
+    }
+
+    @Test
+    fun `writeToDocument - should fail without retrying when wt returns null`() {
+        // GIVEN
+        `when`(contentResolver.openOutputStream(destinationUri, "wt")).thenReturn(null)
+
+        // WHEN
+        val error = assertThrows(IOException::class.java) { write() }
+
+        // THEN
+        assertEquals("openOutputStream returned null", error.message)
+        val order = inOrder(contentResolver)
+        order.verify(contentResolver).openOutputStream(destinationUri, "wt")
+        verifyNoMoreInteractions(contentResolver)
+    }
+
+    @Test
+    fun `writeToDocument - should fail when the fallback returns null`() {
+        // GIVEN
+        `when`(contentResolver.openOutputStream(destinationUri, "wt"))
+                .thenThrow(FileNotFoundException("wt"))
+        `when`(contentResolver.openOutputStream(destinationUri, "w")).thenReturn(null)
+
+        // WHEN
+        val error = assertThrows(IOException::class.java) { write() }
+
+        // THEN
+        assertEquals("openOutputStream returned null", error.message)
+        val order = inOrder(contentResolver)
+        order.verify(contentResolver).openOutputStream(destinationUri, "wt")
+        order.verify(contentResolver).openOutputStream(destinationUri, "w")
+        verifyNoMoreInteractions(contentResolver)
+    }
+
+    @Test
+    fun `writeToDocument - should propagate other opening errors without retrying`() {
+        for (error in listOf(IOException("Provider failed"), SecurityException("Access denied"))) {
+            // GIVEN
+            val resolver = mock(ContentResolver::class.java)
+            `when`(resolver.openOutputStream(destinationUri, "wt")).thenAnswer { throw error }
+
+            // WHEN
+            val thrown = assertThrows(error.javaClass) { write(resolver) }
+
+            // THEN
+            assertSame(error, thrown)
+            val order = inOrder(resolver)
+            order.verify(resolver).openOutputStream(destinationUri, "wt")
+            verifyNoMoreInteractions(resolver)
+        }
+    }
+
+    @Test
+    fun `saveOnBackground - should run save off the main thread and reply its path on the main thread`() {
+        // GIVEN
+        val result = FakeMethodChannelResult()
+        var saveThread: Thread? = null
+
+        // WHEN
+        saveOnBackground(result) {
+            saveThread = Thread.currentThread()
+            "/path"
+        }
+
+        // THEN
+        assertEquals(0, result.completionCount)
+        result.awaitCompletion()
+        val mainThread = Looper.getMainLooper().thread
+        assertNotEquals(mainThread, saveThread)
+        assertEquals(mainThread, result.completionThread)
+        assertEquals(1, result.successCount)
+        assertEquals("/path", result.lastSuccessValue)
+    }
+
+    @Test
+    fun `saveOnBackground - should reply security_exception for a SecurityException`() {
+        // GIVEN
+        val result = FakeMethodChannelResult()
+
+        // WHEN
+        saveOnBackground(result) { throw SecurityException("Access denied") }
+        result.awaitCompletion()
+
+        // THEN
+        assertEquals(1, result.completionCount)
+        assertEquals("security_exception", result.lastErrorCode)
+        assertEquals("Access denied", result.lastErrorMessage)
+    }
+
+    @Test
+    fun `saveOnBackground - should reply save_file_failed for other errors`() {
+        // GIVEN
+        val result = FakeMethodChannelResult()
+
+        // WHEN
+        saveOnBackground(result) { throw IOException("Provider failed") }
+        result.awaitCompletion()
+
+        // THEN
+        assertEquals(1, result.completionCount)
+        assertEquals("save_file_failed", result.lastErrorCode)
+        assertEquals("Provider failed", result.lastErrorMessage)
+    }
+}
