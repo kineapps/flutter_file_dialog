@@ -68,7 +68,7 @@ export default class FlutterFileDialogPlugin implements FlutterPlugin, MethodCal
         options.newFileNames = [suggestedName || sourcePath?.split('/').pop() || 'file'];
         const uris = await documentPicker.save(options);
         if (uris.length === 0) { result.success(null); return; }
-        const destination = fs.openSync(uris[0], fs.OpenMode.READ_WRITE | fs.OpenMode.TRUNC);
+        const destination = fs.openSync(uris[0], fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE | fs.OpenMode.TRUNC);
         try {
           if (data !== undefined && data !== null) {
             let offset = 0;
