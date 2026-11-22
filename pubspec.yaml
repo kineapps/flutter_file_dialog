@@ -34,6 +34,9 @@ flutter:
         pluginClass: FlutterFileDialogPlugin
       ios:
         pluginClass: FlutterFileDialogPlugin
+      ohos:
+        package: com.kineapps.flutter_file_dialog
+        pluginClass: FlutterFileDialogPlugin
   # To add assets to your plugin package, add an assets section, like this:
   # assets:
   #  - images/a_dot_burr.jpeg
