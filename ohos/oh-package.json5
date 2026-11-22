@@ -1,0 +1,7 @@
+{
+  "name": "flutter_file_dialog",
+  "version": "3.3.6",
+  "main": "index.ets",
+  "license": "BSD-3-Clause",
+  "dependencies": { "@ohos/flutter_ohos": "file:./har/flutter.har" }
+}

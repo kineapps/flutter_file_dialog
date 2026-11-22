@@ -93,3 +93,15 @@ Use the plugin [flutter_image_utilities](https://pub.dev/packages/flutter_image_
     );
   }
 ```
+
+## OpenHarmony support
+
+On OpenHarmony, `pickFile` and `saveFile` use the system document picker.
+Picked files are copied into a unique application cache directory by default.
+Saving writes bytes or copies the source file through the picker-granted URI
+before completing. A saved destination is a document URI, not a Dart filesystem
+path. Cancelling returns null; picker and IO errors return platform errors.
+
+Directory picking and `saveFileToDirectory` are not supported on OpenHarmony;
+`isPickDirectorySupported` returns false. The document picker uses extension
+filters; Android/iOS-specific photo and MIME options do not apply.
